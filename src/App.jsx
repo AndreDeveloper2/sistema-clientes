@@ -17,7 +17,7 @@ function ProtectedRoute({ children }) {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />

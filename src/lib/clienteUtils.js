@@ -127,3 +127,29 @@ export function formatarMoeda(valor) {
     currency: "BRL",
   }).format(valor || 0);
 }
+
+/**
+ * Aplica máscara de WhatsApp no formato (00) 00000-0000 ou (00) 0000-0000
+ */
+export function aplicarMascaraWhatsApp(valor) {
+  // Remove tudo que não é número
+  const apenasNumeros = valor.replace(/\D/g, "");
+
+  // Limita a 11 dígitos (DDD + 9 dígitos para celular ou 8 para fixo)
+  const numerosLimitados = apenasNumeros.slice(0, 11);
+
+  // Aplica a máscara
+  if (numerosLimitados.length === 0) {
+    return "";
+  } else if (numerosLimitados.length <= 2) {
+    return `(${numerosLimitados}`;
+  } else if (numerosLimitados.length <= 6) {
+    return `(${numerosLimitados.slice(0, 2)}) ${numerosLimitados.slice(2)}`;
+  } else if (numerosLimitados.length <= 10) {
+    // Telefone fixo: (00) 0000-0000
+    return `(${numerosLimitados.slice(0, 2)}) ${numerosLimitados.slice(2, 6)}-${numerosLimitados.slice(6)}`;
+  } else {
+    // Celular: (00) 00000-0000
+    return `(${numerosLimitados.slice(0, 2)}) ${numerosLimitados.slice(2, 7)}-${numerosLimitados.slice(7, 11)}`;
+  }
+}

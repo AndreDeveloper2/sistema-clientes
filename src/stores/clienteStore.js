@@ -27,17 +27,33 @@ export const useClienteStore = create(
       // Atualizar status de todos os clientes
       atualizarStatusTodos: () => {
         const clientes = get().clientes;
+        // Obter mês atual no formato YYYY-MM
+        const hoje = new Date();
+        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        
         const clientesAtualizados = clientes.map((cliente) => {
           // Se o cliente está inadimplente, não atualizar status automaticamente
           if (cliente.situacao === "INADIMPLENTE") {
             return cliente;
           }
+          
           const diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
-          return {
+          let clienteAtualizado = {
             ...cliente,
             diasRestantes,
             status: calcularStatus(cliente.dataVencimento, diasRestantes),
           };
+          
+          // Resetar desconto de indicação se o mês mudou
+          if (cliente.mesDescontoIndicacao && cliente.mesDescontoIndicacao !== mesAtual) {
+            clienteAtualizado = {
+              ...clienteAtualizado,
+              descontoIndicacao: 0,
+              mesDescontoIndicacao: null,
+            };
+          }
+          
+          return clienteAtualizado;
         });
         set({ clientes: clientesAtualizados });
       },
@@ -140,9 +156,12 @@ export const useClienteStore = create(
         const novaDataVencimento = new Date(cliente.dataVencimento);
         novaDataVencimento.setDate(novaDataVencimento.getDate() + 30);
 
+        // Resetar desconto de indicação ao renovar (novo mês)
         get().atualizarCliente(id, {
           dataVencimento: novaDataVencimento.toISOString().split("T")[0],
           situacao: "PAGO",
+          descontoIndicacao: 0,
+          mesDescontoIndicacao: null,
         });
       },
 
@@ -160,6 +179,37 @@ export const useClienteStore = create(
           situacao: "INADIMPLENTE",
           diasInadimplente: diasInadimplente,
           valorJuros: valorJuros,
+        });
+      },
+
+      aplicarIndicacao: (idIndicador, idIndicado) => {
+        const clienteIndicador = get().clientes.find((c) => c.id === idIndicador);
+        if (!clienteIndicador) return;
+
+        const descontoIndicacao = 20.0; // R$ 20,00 de desconto por indicação
+        const clientesIndicadosAtual = clienteIndicador.clientesIndicados || 0;
+        
+        // Obter mês atual no formato YYYY-MM
+        const hoje = new Date();
+        const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Se o desconto foi aplicado em um mês diferente, resetar
+        const mesDescontoAnterior = clienteIndicador.mesDescontoIndicacao;
+        let descontoTotalAtual = 0;
+        
+        if (mesDescontoAnterior === mesAtual) {
+          // Mesmo mês, acumular desconto
+          descontoTotalAtual = clienteIndicador.descontoIndicacao || 0;
+        } else {
+          // Mês diferente, começar do zero
+          descontoTotalAtual = 0;
+        }
+
+        // Atualizar cliente que indicou com desconto e incrementar contador
+        get().atualizarCliente(idIndicador, {
+          clientesIndicados: clientesIndicadosAtual + 1,
+          descontoIndicacao: parseFloat((descontoTotalAtual + descontoIndicacao).toFixed(2)),
+          mesDescontoIndicacao: mesAtual,
         });
       },
 

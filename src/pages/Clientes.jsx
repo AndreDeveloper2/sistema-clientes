@@ -66,14 +66,16 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Check,
   Calendar as CalendarIcon,
   Filter,
   X,
   UserPlus,
   Calculator,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatarData, formatarMoeda } from "@/lib/clienteUtils";
+import { formatarData, formatarMoeda, aplicarMascaraWhatsApp } from "@/lib/clienteUtils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -91,6 +93,7 @@ export default function Clientes() {
   const excluirCliente = useClienteStore((state) => state.excluirCliente);
   const renovarCliente = useClienteStore((state) => state.renovarCliente);
   const aplicarJuros = useClienteStore((state) => state.aplicarJuros);
+  const aplicarIndicacao = useClienteStore((state) => state.aplicarIndicacao);
   const atualizarStatusTodos = useClienteStore(
     (state) => state.atualizarStatusTodos
   );
@@ -106,7 +109,12 @@ export default function Clientes() {
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [dialogRenovar, setDialogRenovar] = useState(false);
   const [dialogJuros, setDialogJuros] = useState(false);
+  const [dialogIndicacao, setDialogIndicacao] = useState(false);
+  const [dialogNovoClienteIndicacao, setDialogNovoClienteIndicacao] = useState(false);
   const [diasInadimplente, setDiasInadimplente] = useState("");
+  const [clienteIndicadoId, setClienteIndicadoId] = useState("");
+  const [buscaClienteIndicado, setBuscaClienteIndicado] = useState("");
+  const [comboboxAberto, setComboboxAberto] = useState(false);
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -136,6 +144,7 @@ export default function Clientes() {
     servidor: "",
     telas: "",
     valorDoServidor: "",
+    whatsapp: "",
   });
 
   useEffect(() => {
@@ -391,6 +400,7 @@ export default function Clientes() {
       servidor: cliente.servidor,
       telas: cliente.telas?.toString() || "",
       valorDoServidor: cliente.valorDoServidor?.toString() || "",
+      whatsapp: cliente.whatsapp || "",
     });
     setDialogAberto(true);
   };
@@ -453,6 +463,75 @@ export default function Clientes() {
     }
   };
 
+  const handleIndicacaoClick = (cliente) => {
+    setClienteSelecionado(cliente);
+    setClienteIndicadoId("");
+    setBuscaClienteIndicado("");
+    setComboboxAberto(false);
+    setDialogIndicacao(true);
+  };
+
+  // Filtrar clientes para busca
+  const clientesFiltradosIndicacao = clientes.filter((c) => {
+    if (c.id === clienteSelecionado?.id) return false;
+    if (!buscaClienteIndicado) return true;
+    return c.nome.toLowerCase().includes(buscaClienteIndicado.toLowerCase());
+  });
+
+  // Criar novo cliente e aplicar indicação
+  const handleCriarClienteEIndicar = async (dadosNovoCliente) => {
+    try {
+      const servidorSelecionado = servidores.find(
+        (s) => s.nome === dadosNovoCliente.servidor
+      );
+      const custoBaseServidor = servidorSelecionado?.custoBase || 0;
+
+      const dados = {
+        ...dadosNovoCliente,
+        valor: parseFloat(dadosNovoCliente.valor),
+        telas: parseInt(dadosNovoCliente.telas) || 0,
+        valorDoServidor:
+          parseFloat(dadosNovoCliente.valorDoServidor) || custoBaseServidor,
+      };
+
+      const novoCliente = await adicionarCliente(dados);
+      
+      // Aplicar indicação automaticamente
+      if (novoCliente && clienteSelecionado) {
+        aplicarIndicacao(clienteSelecionado.id, novoCliente.id);
+        toast.success(
+          `Cliente ${dadosNovoCliente.nome} criado e indicação registrada! ${clienteSelecionado.nome} recebeu desconto de ${formatarMoeda(20.0)}.`
+        );
+        setDialogNovoClienteIndicacao(false);
+        setDialogIndicacao(false);
+        setClienteSelecionado(null);
+        setClienteIndicadoId("");
+        setBuscaClienteIndicado("");
+      }
+    } catch (error) {
+      toast.error("Erro ao criar cliente. Tente novamente.");
+    }
+  };
+
+  const confirmarIndicacao = () => {
+    if (clienteSelecionado && clienteIndicadoId) {
+      if (clienteSelecionado.id === clienteIndicadoId) {
+        toast.error("Um cliente não pode indicar a si mesmo.");
+        return;
+      }
+      aplicarIndicacao(clienteSelecionado.id, clienteIndicadoId);
+      const clienteIndicado = clientes.find((c) => c.id === clienteIndicadoId);
+      toast.success(
+        `Desconto de ${formatarMoeda(20.0)} aplicado para ${clienteSelecionado.nome}! Ele indicou ${clienteIndicado?.nome || "cliente"}.`
+      );
+      setDialogIndicacao(false);
+      setClienteSelecionado(null);
+      setClienteIndicadoId("");
+    } else {
+      toast.error("Por favor, selecione o cliente indicado.");
+    }
+  };
+
   const handleVisualizar = (cliente) => {
     setClienteSelecionado(cliente);
     setDialogVisualizar(true);
@@ -468,6 +547,7 @@ export default function Clientes() {
       servidor: "",
       telas: "",
       valorDoServidor: "",
+      whatsapp: "",
     });
     setClienteSelecionado(null);
     setModoEdicao(false);
@@ -593,21 +673,10 @@ export default function Clientes() {
                         }
                         onSelect={(date) => {
                           if (date) {
-                            // Criar data no timezone local para evitar problemas
-                            // O date já vem do Calendar no timezone local, mas vamos garantir
-                            const localDate = new Date(
-                              date.getFullYear(),
-                              date.getMonth(),
-                              date.getDate()
-                            );
-                            const ano = localDate.getFullYear();
-                            const mes = String(
-                              localDate.getMonth() + 1
-                            ).padStart(2, "0");
-                            const dia = String(localDate.getDate()).padStart(
-                              2,
-                              "0"
-                            );
+                            // Usar diretamente os valores do date que já está no timezone local
+                            const ano = date.getFullYear();
+                            const mes = String(date.getMonth() + 1).padStart(2, "0");
+                            const dia = String(date.getDate()).padStart(2, "0");
                             const dateStr = `${ano}-${mes}-${dia}`;
                             setFormData({ ...formData, dataEntrada: dateStr });
                           }
@@ -660,21 +729,10 @@ export default function Clientes() {
                         }
                         onSelect={(date) => {
                           if (date) {
-                            // Criar data no timezone local para evitar problemas
-                            // O date já vem do Calendar no timezone local, mas vamos garantir
-                            const localDate = new Date(
-                              date.getFullYear(),
-                              date.getMonth(),
-                              date.getDate()
-                            );
-                            const ano = localDate.getFullYear();
-                            const mes = String(
-                              localDate.getMonth() + 1
-                            ).padStart(2, "0");
-                            const dia = String(localDate.getDate()).padStart(
-                              2,
-                              "0"
-                            );
+                            // Usar diretamente os valores do date que já está no timezone local
+                            const ano = date.getFullYear();
+                            const mes = String(date.getMonth() + 1).padStart(2, "0");
+                            const dia = String(date.getDate()).padStart(2, "0");
                             const dateStr = `${ano}-${mes}-${dia}`;
                             setFormData({
                               ...formData,
@@ -746,6 +804,23 @@ export default function Clientes() {
                         valorDoServidor: e.target.value,
                       })
                     }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={formData.whatsapp}
+                    onChange={(e) => {
+                      const valorFormatado = aplicarMascaraWhatsApp(e.target.value);
+                      setFormData({
+                        ...formData,
+                        whatsapp: valorFormatado,
+                      });
+                    }}
+                    maxLength={15}
                   />
                 </div>
               </div>
@@ -1062,6 +1137,12 @@ export default function Clientes() {
                                 + {formatarMoeda(cliente.valorJuros)} juros
                               </span>
                             )}
+                          {cliente.descontoIndicacao &&
+                            cliente.descontoIndicacao > 0 && (
+                              <span className="text-[10px] text-purple-600 dark:text-purple-400">
+                                - {formatarMoeda(cliente.descontoIndicacao)} desconto
+                              </span>
+                            )}
                         </div>
                       </div>
 
@@ -1105,6 +1186,15 @@ export default function Clientes() {
                             title="Aplicar Juros"
                           >
                             <Calculator className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleIndicacaoClick(cliente)}
+                            className="h-7 w-7 text-purple-600 dark:text-purple-400"
+                            title="Registrar Indicação"
+                          >
+                            <Gift className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1367,6 +1457,11 @@ export default function Clientes() {
                                   + {formatarMoeda(cliente.valorJuros)} juros
                                 </span>
                               )}
+                            {cliente.descontoIndicacao && cliente.descontoIndicacao > 0 && (
+                              <span className="text-[10px] text-purple-600 dark:text-purple-400">
+                                - {formatarMoeda(cliente.descontoIndicacao)} desconto
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">
@@ -1402,6 +1497,14 @@ export default function Clientes() {
                               className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
                             >
                               <Calculator className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleIndicacaoClick(cliente)}
+                              className="h-8 w-8 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                            >
+                              <Gift className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1605,6 +1708,12 @@ export default function Clientes() {
                     {formatarMoeda(clienteSelecionado.lucroCliente || 0)}
                   </p>
                 </div>
+                {clienteSelecionado.whatsapp && (
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">WhatsApp</Label>
+                    <p className="font-semibold">{clienteSelecionado.whatsapp}</p>
+                  </div>
+                )}
                 {clienteSelecionado.situacao === "INADIMPLENTE" && (
                   <>
                     <div className="space-y-1">
@@ -1629,13 +1738,45 @@ export default function Clientes() {
                       </Label>
                       <p className="font-semibold text-orange-600 dark:text-orange-400">
                         {formatarMoeda(
-                          (clienteSelecionado.valor || 0) +
-                            (clienteSelecionado.valorJuros || 0)
+                          (clienteSelecionado.valor || 0) + 
+                          (clienteSelecionado.valorJuros || 0)
                         )}
                       </p>
                     </div>
                   </>
                 )}
+                {clienteSelecionado.descontoIndicacao &&
+                  clienteSelecionado.descontoIndicacao > 0 && (
+                    <>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground">
+                          Clientes Indicados
+                        </Label>
+                        <p className="font-semibold text-purple-600 dark:text-purple-400">
+                          {clienteSelecionado.clientesIndicados || 0} cliente(s)
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground">
+                          Desconto por Indicação
+                        </Label>
+                        <p className="font-semibold text-purple-600 dark:text-purple-400">
+                          {formatarMoeda(clienteSelecionado.descontoIndicacao || 0)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-muted-foreground">
+                          Valor Final (Mensalidade - Desconto)
+                        </Label>
+                        <p className="font-semibold text-purple-600 dark:text-purple-400">
+                          {formatarMoeda(
+                            (clienteSelecionado.valor || 0) -
+                            (clienteSelecionado.descontoIndicacao || 0)
+                          )}
+                        </p>
+                      </div>
+                    </>
+                  )}
               </div>
             </div>
           )}
@@ -1764,6 +1905,449 @@ export default function Clientes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AlertDialog Indicação */}
+      <AlertDialog open={dialogIndicacao} onOpenChange={setDialogIndicacao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registrar Indicação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selecione qual cliente foi indicado por{" "}
+              <strong>{clienteSelecionado?.nome}</strong>.{" "}
+              <strong>{clienteSelecionado?.nome}</strong> receberá um desconto de R$ 20,00 por fazer esta indicação.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="clienteIndicado" className="mb-2 block">
+              Cliente indicado
+            </Label>
+            <Popover open={comboboxAberto} onOpenChange={setComboboxAberto}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxAberto}
+                  className="w-full justify-between"
+                  onClick={() => setComboboxAberto(!comboboxAberto)}
+                >
+                  {clienteIndicadoId
+                    ? clientes.find((c) => c.id === clienteIndicadoId)?.nome ||
+                      "Selecione o cliente"
+                    : "Buscar ou criar cliente..."}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <div className="p-2">
+                  <Input
+                    placeholder="Digite para buscar..."
+                    value={buscaClienteIndicado}
+                    onChange={(e) => setBuscaClienteIndicado(e.target.value)}
+                    className="mb-2"
+                    onFocus={() => setComboboxAberto(true)}
+                  />
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {clientesFiltradosIndicacao.length > 0 ? (
+                      clientesFiltradosIndicacao.map((cliente) => (
+                        <div
+                          key={cliente.id}
+                          className={`flex items-center justify-between p-2 hover:bg-accent rounded cursor-pointer ${
+                            clienteIndicadoId === cliente.id ? "bg-accent" : ""
+                          }`}
+                          onClick={() => {
+                            setClienteIndicadoId(cliente.id);
+                            setBuscaClienteIndicado(cliente.nome);
+                            setComboboxAberto(false);
+                          }}
+                        >
+                          <span className="text-sm">{cliente.nome}</span>
+                          {clienteIndicadoId === cliente.id && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground text-center">
+                        {buscaClienteIndicado
+                          ? "Nenhum cliente encontrado"
+                          : "Digite para buscar..."}
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t mt-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setDialogNovoClienteIndicacao(true);
+                        setComboboxAberto(false);
+                      }}
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Criar novo cliente
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            {clienteIndicadoId && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                Cliente selecionado:{" "}
+                <strong className="text-foreground">
+                  {clientes.find((c) => c.id === clienteIndicadoId)?.nome}
+                </strong>
+              </div>
+            )}
+            {clienteIndicadoId && clienteSelecionado && (
+              <div className="mt-2 space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Desconto a ser aplicado para <strong>{clienteSelecionado.nome}</strong>:{" "}
+                  <strong className="text-foreground text-green-600 dark:text-green-400">
+                    {formatarMoeda(20.0)}
+                  </strong>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Desconto total de <strong>{clienteSelecionado.nome}</strong> após indicação:{" "}
+                  <strong className="text-foreground text-purple-600 dark:text-purple-400">
+                    {formatarMoeda(
+                      parseFloat(
+                        ((clienteSelecionado.descontoIndicacao || 0) + 20.0).toFixed(2)
+                      )
+                    )}
+                  </strong>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Valor final que <strong>{clienteSelecionado.nome}</strong> pagará (mensalidade - desconto):{" "}
+                  <strong className="text-foreground text-purple-600 dark:text-purple-400">
+                    {formatarMoeda(
+                      parseFloat(
+                        (
+                          clienteSelecionado.valor -
+                          (clienteSelecionado.descontoIndicacao || 0) -
+                          20.0
+                        ).toFixed(2)
+                      )
+                    )}
+                  </strong>
+                </p>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setClienteIndicadoId("");
+                setBuscaClienteIndicado("");
+                setClienteSelecionado(null);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarIndicacao}
+              className="bg-purple-600 text-white hover:bg-purple-700"
+              disabled={!clienteIndicadoId}
+            >
+              Registrar Indicação
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog Criar Novo Cliente para Indicação */}
+      <Dialog
+        open={dialogNovoClienteIndicacao}
+        onOpenChange={setDialogNovoClienteIndicacao}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Cliente e Registrar Indicação</DialogTitle>
+            <DialogDescription>
+              Crie um novo cliente que foi indicado por{" "}
+              <strong>{clienteSelecionado?.nome}</strong>. Após criar, a
+              indicação será registrada automaticamente e{" "}
+              <strong>{clienteSelecionado?.nome}</strong> receberá o desconto de R$ 20,00.
+            </DialogDescription>
+          </DialogHeader>
+          <NovoClienteForm
+            servidores={servidores}
+            onSubmit={handleCriarClienteEIndicar}
+            onCancel={() => setDialogNovoClienteIndicacao(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Componente de formulário para novo cliente (reutilizável)
+function NovoClienteForm({ servidores, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState({
+    nome: "",
+    dataEntrada: new Date().toISOString().split("T")[0],
+    dataVencimento: "",
+    valor: "",
+    situacao: "PENDENTE",
+    servidor: "",
+    telas: "",
+    valorDoServidor: "",
+    whatsapp: "",
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const servidorSelecionado = servidores.find(
+      (s) => s.nome === formData.servidor
+    );
+    const custoBaseServidor = servidorSelecionado?.custoBase || 0;
+
+    const dados = {
+      ...formData,
+      valor: parseFloat(formData.valor),
+      telas: parseInt(formData.telas) || 0,
+      valorDoServidor:
+        parseFloat(formData.valorDoServidor) || custoBaseServidor,
+    };
+
+    onSubmit(dados);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="novo-nome">Nome *</Label>
+          <Input
+            id="novo-nome"
+            value={formData.nome}
+            onChange={(e) =>
+              setFormData({ ...formData, nome: e.target.value })
+            }
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-servidor">Servidor *</Label>
+          <Select
+            value={formData.servidor}
+            onValueChange={(value) => {
+              const servidorSelecionado = servidores.find(
+                (s) => s.nome === value
+              );
+              setFormData({
+                ...formData,
+                servidor: value,
+                valorDoServidor:
+                  servidorSelecionado?.custoBase?.toString() ||
+                  formData.valorDoServidor,
+              });
+            }}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o servidor" />
+            </SelectTrigger>
+            <SelectContent>
+              {servidores.map((servidor) => (
+                <SelectItem key={servidor.id} value={servidor.nome}>
+                  {servidor.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-dataEntrada">Data de Entrada *</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.dataEntrada
+                  ? (() => {
+                      const [ano, mes, dia] = formData.dataEntrada
+                        .split("-")
+                        .map(Number);
+                      const date = new Date(ano, mes - 1, dia);
+                      return format(date, "dd/MM/yyyy", { locale: ptBR });
+                    })()
+                  : "Selecione a data"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={
+                  formData.dataEntrada
+                    ? (() => {
+                        const [ano, mes, dia] = formData.dataEntrada
+                          .split("-")
+                          .map(Number);
+                        return new Date(ano, mes - 1, dia);
+                      })()
+                    : undefined
+                }
+                onSelect={(date) => {
+                  if (date) {
+                    // Usar diretamente os valores do date que já está no timezone local
+                    const ano = date.getFullYear();
+                    const mes = String(date.getMonth() + 1).padStart(2, "0");
+                    const dia = String(date.getDate()).padStart(2, "0");
+                    const dateStr = `${ano}-${mes}-${dia}`;
+                    setFormData({
+                      ...formData,
+                      dataEntrada: dateStr,
+                    });
+                  }
+                }}
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-dataVencimento">Data de Vencimento *</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.dataVencimento
+                  ? (() => {
+                      const [ano, mes, dia] = formData.dataVencimento
+                        .split("-")
+                        .map(Number);
+                      const date = new Date(ano, mes - 1, dia);
+                      return format(date, "dd/MM/yyyy", { locale: ptBR });
+                    })()
+                  : "Selecione a data"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={
+                  formData.dataVencimento
+                    ? (() => {
+                        const [ano, mes, dia] = formData.dataVencimento
+                          .split("-")
+                          .map(Number);
+                        return new Date(ano, mes - 1, dia);
+                      })()
+                    : undefined
+                }
+                onSelect={(date) => {
+                  if (date) {
+                    // Usar diretamente os valores do date que já está no timezone local
+                    const ano = date.getFullYear();
+                    const mes = String(date.getMonth() + 1).padStart(2, "0");
+                    const dia = String(date.getDate()).padStart(2, "0");
+                    const dateStr = `${ano}-${mes}-${dia}`;
+                    setFormData({
+                      ...formData,
+                      dataVencimento: dateStr,
+                    });
+                  }
+                }}
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-valor">Valor (R$) *</Label>
+          <Input
+            id="novo-valor"
+            type="number"
+            step="0.01"
+            value={formData.valor}
+            onChange={(e) =>
+              setFormData({ ...formData, valor: e.target.value })
+            }
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-situacao">Situação *</Label>
+          <Select
+            value={formData.situacao}
+            onValueChange={(value) =>
+              setFormData({ ...formData, situacao: value })
+            }
+            required
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PAGO">PAGO</SelectItem>
+              <SelectItem value="PENDENTE">PENDENTE</SelectItem>
+              <SelectItem value="INADIMPLENTE">INADIMPLENTE</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-telas">Quantidade de Telas</Label>
+          <Input
+            id="novo-telas"
+            type="number"
+            value={formData.telas}
+            onChange={(e) =>
+              setFormData({ ...formData, telas: e.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-valorDoServidor">
+            Valor do Servidor (R$)
+          </Label>
+          <Input
+            id="novo-valorDoServidor"
+            type="number"
+            step="0.01"
+            value={formData.valorDoServidor}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                valorDoServidor: e.target.value,
+              })
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="novo-whatsapp">WhatsApp</Label>
+          <Input
+            id="novo-whatsapp"
+            type="tel"
+            placeholder="(00) 00000-0000"
+            value={formData.whatsapp}
+            onChange={(e) => {
+              const valorFormatado = aplicarMascaraWhatsApp(e.target.value);
+              setFormData({ ...formData, whatsapp: valorFormatado });
+            }}
+            maxLength={15}
+          />
+        </div>
+      </div>
+      <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="w-full sm:w-auto"
+        >
+          Cancelar
+        </Button>
+        <Button type="submit" className="w-full sm:w-auto">
+          Criar Cliente e Registrar Indicação
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

@@ -61,7 +61,8 @@ function useAnimatedValue(targetValue, duration = 1500, isCurrency = false) {
   }, [targetValue, duration, hasAnimated]);
 
   if (isCurrency) {
-    return formatarMoeda(Math.round(animatedValue));
+    // Para valores monetários, manter 2 casas decimais sem arredondar para inteiro
+    return formatarMoeda(animatedValue);
   }
   return Math.round(animatedValue);
 }
@@ -229,11 +230,11 @@ export default function Dashboard() {
       description: "Clientes com pagamento vencido",
     },
     {
-      title: "Valor já recebido",
-      value: animatedValorJaRecebido,
+      title: "Valor de Juros",
+      value: animatedValorJuros,
       icon: DollarSign,
-      iconColor: "green",
-      description: "Total já pago este mês",
+      iconColor: "orange",
+      description: "Total de juros por inadimplência",
     },
     {
       title: "Valor Pendente",
@@ -243,11 +244,11 @@ export default function Dashboard() {
       description: "Valor a receber",
     },
     {
-      title: "Valor de Juros",
-      value: animatedValorJuros,
+      title: "Valor já recebido",
+      value: animatedValorJaRecebido,
       icon: DollarSign,
-      iconColor: "orange",
-      description: "Total de juros por inadimplência",
+      iconColor: "green",
+      description: "Total já pago este mês",
     },
     {
       title: "Faturamento Total",
