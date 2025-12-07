@@ -9,12 +9,29 @@
     <script>
       // Aplicar tema imediatamente antes do carregamento para evitar flash
       (function() {
-        const theme = localStorage.getItem('vite-ui-theme') || 'light';
-        const currentTheme = theme === 'system' ? 'light' : theme;
-        document.documentElement.classList.remove('light', 'dark', 'system');
-        document.documentElement.classList.add(currentTheme);
-        document.documentElement.style.setProperty('color-scheme', currentTheme, 'important');
-        document.body.style.setProperty('color-scheme', currentTheme, 'important');
+        try {
+          const theme = localStorage.getItem('vite-ui-theme') || 'light';
+          const currentTheme = theme === 'system' ? 'light' : theme;
+          const html = document.documentElement;
+          if (html) {
+            html.classList.remove('light', 'dark', 'system');
+            html.classList.add(currentTheme);
+            html.style.setProperty('color-scheme', currentTheme, 'important');
+          }
+          // Body pode não existir ainda, aplicar quando disponível
+          if (document.body) {
+            document.body.style.setProperty('color-scheme', currentTheme, 'important');
+          } else {
+            // Aguardar body estar disponível
+            document.addEventListener('DOMContentLoaded', function() {
+              if (document.body) {
+                document.body.style.setProperty('color-scheme', currentTheme, 'important');
+              }
+            });
+          }
+        } catch (e) {
+          // Ignorar erros no script inline
+        }
       })();
     </script>
     <meta name="description" content="Sistema de gestão de clientes" />
