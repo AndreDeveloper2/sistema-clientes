@@ -70,6 +70,7 @@ import {
   Filter,
   X,
   UserPlus,
+  Calculator,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatarData, formatarMoeda } from "@/lib/clienteUtils";
@@ -89,6 +90,7 @@ export default function Clientes() {
   const atualizarCliente = useClienteStore((state) => state.atualizarCliente);
   const excluirCliente = useClienteStore((state) => state.excluirCliente);
   const renovarCliente = useClienteStore((state) => state.renovarCliente);
+  const aplicarJuros = useClienteStore((state) => state.aplicarJuros);
   const atualizarStatusTodos = useClienteStore(
     (state) => state.atualizarStatusTodos
   );
@@ -96,12 +98,15 @@ export default function Clientes() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("TODOS");
+  const [filtroSituacao, setFiltroSituacao] = useState("TODOS");
   const [filtroServidor, setFiltroServidor] = useState("TODOS");
   const [ordenacaoVencimento, setOrdenacaoVencimento] = useState(null); // null, 'asc', 'desc'
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogVisualizar, setDialogVisualizar] = useState(false);
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [dialogRenovar, setDialogRenovar] = useState(false);
+  const [dialogJuros, setDialogJuros] = useState(false);
+  const [diasInadimplente, setDiasInadimplente] = useState("");
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -111,12 +116,14 @@ export default function Clientes() {
   // Contar quantos filtros estão ativos
   const filtrosAtivos =
     (filtroStatus !== "TODOS" ? 1 : 0) +
+    (filtroSituacao !== "TODOS" ? 1 : 0) +
     (filtroServidor !== "TODOS" ? 1 : 0) +
     (searchTerm ? 1 : 0);
 
   const limparFiltros = () => {
     setSearchTerm("");
     setFiltroStatus("TODOS");
+    setFiltroSituacao("TODOS");
     setFiltroServidor("TODOS");
   };
 
@@ -153,12 +160,19 @@ export default function Clientes() {
             cliente.diasRestantes >= 0 && cliente.diasRestantes <= 5;
         } else if (filtroStatus === "EM DIA") {
           matchStatus = cliente.diasRestantes > 5;
+        } else if (filtroStatus === "INADIMPLENTE") {
+          matchStatus = cliente.situacao === "INADIMPLENTE";
         }
       }
 
       const matchServidor =
         filtroServidor === "TODOS" || cliente.servidor === filtroServidor;
-      return matchSearch && matchStatus && matchServidor;
+
+      // Filtro de situação (PENDENTE/PAGO/INADIMPLENTE)
+      const matchSituacao =
+        filtroSituacao === "TODOS" || cliente.situacao === filtroSituacao;
+
+      return matchSearch && matchStatus && matchServidor && matchSituacao;
     })
     .sort((a, b) => {
       if (ordenacaoVencimento === null) return 0;
@@ -188,22 +202,33 @@ export default function Clientes() {
   const clientesPaginados = clientesFiltrados.slice(indiceInicio, indiceFim);
 
   // Resetar para primeira página quando filtros mudarem
-  const prevFiltersRef = useRef({ searchTerm, filtroStatus, filtroServidor });
+  const prevFiltersRef = useRef({
+    searchTerm,
+    filtroStatus,
+    filtroSituacao,
+    filtroServidor,
+  });
   useEffect(() => {
     const prevFilters = prevFiltersRef.current;
     const filtersChanged =
       prevFilters.searchTerm !== searchTerm ||
       prevFilters.filtroStatus !== filtroStatus ||
+      prevFilters.filtroSituacao !== filtroSituacao ||
       prevFilters.filtroServidor !== filtroServidor;
 
     if (filtersChanged) {
-      prevFiltersRef.current = { searchTerm, filtroStatus, filtroServidor };
+      prevFiltersRef.current = {
+        searchTerm,
+        filtroStatus,
+        filtroSituacao,
+        filtroServidor,
+      };
       // Usar setTimeout para evitar warning do linter
       setTimeout(() => {
         setPaginaAtual(1);
       }, 0);
     }
-  }, [searchTerm, filtroStatus, filtroServidor]);
+  }, [searchTerm, filtroStatus, filtroSituacao, filtroServidor]);
 
   const handleOrdenarVencimento = (direcao) => {
     if (ordenacaoVencimento === direcao) {
@@ -273,6 +298,13 @@ export default function Clientes() {
       return (
         <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/20">
           PAGO
+        </Badge>
+      );
+    }
+    if (situacao === "INADIMPLENTE") {
+      return (
+        <Badge className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 hover:bg-orange-500/20">
+          INADIMPLENTE
         </Badge>
       );
     }
@@ -388,6 +420,36 @@ export default function Clientes() {
       toast.success(`Cliente ${clienteSelecionado.nome} renovado com sucesso!`);
       setDialogRenovar(false);
       setClienteSelecionado(null);
+    }
+  };
+
+  const handleJurosClick = (cliente) => {
+    setClienteSelecionado(cliente);
+    setDiasInadimplente("");
+    setDialogJuros(true);
+  };
+
+  const confirmarJuros = () => {
+    if (clienteSelecionado && diasInadimplente) {
+      const dias = parseInt(diasInadimplente);
+      if (dias > 0) {
+        aplicarJuros(clienteSelecionado.id, dias);
+        // Calcular com a mesma precisão do store
+        const valorDiario = parseFloat(
+          (clienteSelecionado.valor / 30).toFixed(4)
+        );
+        const valorJuros = parseFloat((valorDiario * dias).toFixed(2));
+        toast.success(
+          `Juros de ${formatarMoeda(valorJuros)} aplicados para ${dias} ${
+            dias === 1 ? "dia" : "dias"
+          } de inadimplência!`
+        );
+        setDialogJuros(false);
+        setClienteSelecionado(null);
+        setDiasInadimplente("");
+      } else {
+        toast.error("Por favor, informe um número válido de dias.");
+      }
     }
   };
 
@@ -654,6 +716,7 @@ export default function Clientes() {
                     <SelectContent>
                       <SelectItem value="PAGO">PAGO</SelectItem>
                       <SelectItem value="PENDENTE">PENDENTE</SelectItem>
+                      <SelectItem value="INADIMPLENTE">INADIMPLENTE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -737,6 +800,7 @@ export default function Clientes() {
                   <SelectItem value="VENCIDO">Vencido</SelectItem>
                   <SelectItem value="A VENCER">A Vencer</SelectItem>
                   <SelectItem value="EM DIA">Em Dia</SelectItem>
+                  <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -838,16 +902,19 @@ export default function Clientes() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Vencimento</Label>
-                  <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <Label className="text-xs">Situação</Label>
+                  <Select
+                    value={filtroSituacao}
+                    onValueChange={setFiltroSituacao}
+                  >
                     <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Selecione o período" />
+                      <SelectValue placeholder="Selecione a situação" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="TODOS">Todos</SelectItem>
-                      <SelectItem value="VENCIDO">Vencido</SelectItem>
-                      <SelectItem value="A VENCER">A Vencer</SelectItem>
-                      <SelectItem value="EM DIA">Em Dia</SelectItem>
+                      <SelectItem value="PENDENTE">Pendente</SelectItem>
+                      <SelectItem value="PAGO">Pago</SelectItem>
+                      <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -939,11 +1006,13 @@ export default function Clientes() {
                             {cliente.servidor}
                           </p>
                         </div>
-                        <div className="flex-shrink-0 pt-0.5">
+                        <div className="flex-shrink-0 pt-0.5 flex flex-col gap-1 items-end">
                           {getStatusBadge(
                             cliente.status,
                             cliente.diasRestantes
                           )}
+                          {cliente.situacao === "INADIMPLENTE" &&
+                            getSituacaoBadge(cliente.situacao)}
                         </div>
                       </div>
                     </div>
@@ -958,8 +1027,24 @@ export default function Clientes() {
                               cliente.dataVencimento,
                               cliente.diasRestantes
                             )}
-                            <span className="text-xs text-muted-foreground">
-                              {mensagemExpira}
+                            <span
+                              className={`text-xs ${
+                                cliente.situacao === "INADIMPLENTE" &&
+                                cliente.diasInadimplente
+                                  ? "text-orange-600 dark:text-orange-400 font-medium"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {cliente.situacao === "INADIMPLENTE" &&
+                              cliente.diasInadimplente
+                                ? `Inadimplente há ${
+                                    cliente.diasInadimplente
+                                  } ${
+                                    cliente.diasInadimplente === 1
+                                      ? "dia"
+                                      : "dias"
+                                  }`
+                                : mensagemExpira}
                             </span>
                           </div>
                         </div>
@@ -967,9 +1052,17 @@ export default function Clientes() {
 
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Valor:</span>
-                        <span className="font-semibold">
-                          {formatarMoeda(cliente.valor)}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-semibold">
+                            {formatarMoeda(cliente.valor)}
+                          </span>
+                          {cliente.situacao === "INADIMPLENTE" &&
+                            cliente.valorJuros && (
+                              <span className="text-[10px] text-orange-600 dark:text-orange-400">
+                                + {formatarMoeda(cliente.valorJuros)} juros
+                              </span>
+                            )}
+                        </div>
                       </div>
 
                       <div className="border-t pt-2 flex items-center justify-between">
@@ -1003,6 +1096,15 @@ export default function Clientes() {
                             title="Renovar"
                           >
                             <Zap className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleJurosClick(cliente)}
+                            className="h-7 w-7 text-orange-600 dark:text-orange-400"
+                            title="Aplicar Juros"
+                          >
+                            <Calculator className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -1232,13 +1334,20 @@ export default function Clientes() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`${getCorPorDiasRestantes(
-                              cliente.diasRestantes
-                            )} font-medium`}
-                          >
-                            {cliente.diasRestantes}
-                          </span>
+                          {cliente.situacao === "INADIMPLENTE" &&
+                          cliente.diasInadimplente ? (
+                            <span className="text-orange-600 dark:text-orange-400 font-medium">
+                              {cliente.diasInadimplente} dias inadimplente
+                            </span>
+                          ) : (
+                            <span
+                              className={`${getCorPorDiasRestantes(
+                                cliente.diasRestantes
+                              )} font-medium`}
+                            >
+                              {cliente.diasRestantes}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(
@@ -1249,7 +1358,17 @@ export default function Clientes() {
                         <TableCell>
                           {getSituacaoBadge(cliente.situacao)}
                         </TableCell>
-                        <TableCell>{formatarMoeda(cliente.valor)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{formatarMoeda(cliente.valor)}</span>
+                            {cliente.situacao === "INADIMPLENTE" &&
+                              cliente.valorJuros && (
+                                <span className="text-[10px] text-orange-600 dark:text-orange-400">
+                                  + {formatarMoeda(cliente.valorJuros)} juros
+                                </span>
+                              )}
+                          </div>
+                        </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">
                           <div className="flex gap-1">
                             <Button
@@ -1275,6 +1394,14 @@ export default function Clientes() {
                               className="h-8 w-8 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
                             >
                               <Zap className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleJurosClick(cliente)}
+                              className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
+                            >
+                              <Calculator className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -1478,6 +1605,37 @@ export default function Clientes() {
                     {formatarMoeda(clienteSelecionado.lucroCliente || 0)}
                   </p>
                 </div>
+                {clienteSelecionado.situacao === "INADIMPLENTE" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">
+                        Dias Inadimplente
+                      </Label>
+                      <p className="font-semibold text-orange-600 dark:text-orange-400">
+                        {clienteSelecionado.diasInadimplente || 0} dias
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">
+                        Valor dos Juros
+                      </Label>
+                      <p className="font-semibold text-orange-600 dark:text-orange-400">
+                        {formatarMoeda(clienteSelecionado.valorJuros || 0)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">
+                        Total a Pagar (Mensalidade + Juros)
+                      </Label>
+                      <p className="font-semibold text-orange-600 dark:text-orange-400">
+                        {formatarMoeda(
+                          (clienteSelecionado.valor || 0) +
+                            (clienteSelecionado.valorJuros || 0)
+                        )}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -1528,6 +1686,80 @@ export default function Clientes() {
               className="bg-yellow-600 text-white hover:bg-yellow-700"
             >
               Renovar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog Juros */}
+      <AlertDialog open={dialogJuros} onOpenChange={setDialogJuros}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar Juros por Atraso</AlertDialogTitle>
+            <AlertDialogDescription>
+              Informe quantos dias o cliente{" "}
+              <strong>{clienteSelecionado?.nome}</strong> ficará inadimplente.
+              Os juros serão calculados automaticamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="diasInadimplente" className="mb-2 block">
+              Dias de inadimplência
+            </Label>
+            <Input
+              id="diasInadimplente"
+              type="number"
+              min="1"
+              value={diasInadimplente}
+              onChange={(e) => setDiasInadimplente(e.target.value)}
+              placeholder="Ex: 15"
+              className="w-full"
+            />
+            {diasInadimplente &&
+              clienteSelecionado &&
+              (() => {
+                const dias = parseInt(diasInadimplente);
+                const valorDiario = parseFloat(
+                  (clienteSelecionado.valor / 30).toFixed(4)
+                );
+                const valorJuros = parseFloat((valorDiario * dias).toFixed(2));
+                const totalPagar = parseFloat(
+                  (clienteSelecionado.valor + valorJuros).toFixed(2)
+                );
+
+                return (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      Valor dos juros:{" "}
+                      <strong className="text-foreground">
+                        {formatarMoeda(valorJuros)}
+                      </strong>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Total a pagar (mensalidade + juros):{" "}
+                      <strong className="text-foreground text-orange-600 dark:text-orange-400">
+                        {formatarMoeda(totalPagar)}
+                      </strong>
+                    </p>
+                  </div>
+                );
+              })()}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDiasInadimplente("");
+                setClienteSelecionado(null);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarJuros}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+              disabled={!diasInadimplente || parseInt(diasInadimplente) <= 0}
+            >
+              Aplicar Juros
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

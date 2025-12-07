@@ -133,12 +133,14 @@ export const syncClientesFromFirebase = async () => {
       const data = docSnap.data();
       // Remover userId e updatedAt antes de salvar
       const { userId, updatedAt, ...cliente } = data;
-      // Recalcular status e dias restantes
-      cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
-      cliente.status = calcularStatus(
-        cliente.dataVencimento,
-        cliente.diasRestantes
-      );
+      // Recalcular status e dias restantes apenas se não for inadimplente
+      if (cliente.situacao !== "INADIMPLENTE") {
+        cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
+        cliente.status = calcularStatus(
+          cliente.dataVencimento,
+          cliente.diasRestantes
+        );
+      }
       clientes.push(cliente);
     });
 

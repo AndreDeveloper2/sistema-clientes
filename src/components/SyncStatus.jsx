@@ -52,7 +52,8 @@ export function SyncStatus() {
         icon: CloudOff,
         text: 'Offline',
         variant: 'secondary',
-        className: 'text-muted-foreground',
+        badgeClassName: 'text-muted-foreground',
+        iconClassName: '',
       }
     }
 
@@ -62,28 +63,32 @@ export function SyncStatus() {
           icon: Loader2,
           text: 'Sincronizando...',
           variant: 'secondary',
-          className: 'text-blue-600 dark:text-blue-400 animate-spin',
+          badgeClassName: 'text-blue-600 dark:text-blue-400',
+          iconClassName: 'animate-spin',
         }
       case 'synced':
         return {
           icon: CheckCircle2,
           text: 'Sincronizado',
           variant: 'secondary',
-          className: 'text-green-600 dark:text-green-400',
+          badgeClassName: 'text-green-600 dark:text-green-400',
+          iconClassName: '',
         }
       case 'error':
         return {
           icon: AlertCircle,
           text: 'Erro',
           variant: 'destructive',
-          className: 'text-red-600 dark:text-red-400',
+          badgeClassName: 'text-red-600 dark:text-red-400',
+          iconClassName: '',
         }
       default:
         return {
           icon: Cloud,
           text: 'Conectando...',
           variant: 'secondary',
-          className: 'text-muted-foreground',
+          badgeClassName: 'text-muted-foreground',
+          iconClassName: '',
         }
     }
   }
@@ -92,8 +97,8 @@ export function SyncStatus() {
   const Icon = config.icon
 
   return (
-    <Badge variant={config.variant} className={`gap-1.5 ${config.className}`}>
-      <Icon className="h-3 w-3" />
+    <Badge variant={config.variant} className={`gap-1.5 ${config.badgeClassName}`}>
+      <Icon className={`h-3 w-3 ${config.iconClassName}`} />
       <span className="text-xs">{config.text}</span>
     </Badge>
   )

@@ -28,6 +28,10 @@ export const useClienteStore = create(
       atualizarStatusTodos: () => {
         const clientes = get().clientes;
         const clientesAtualizados = clientes.map((cliente) => {
+          // Se o cliente está inadimplente, não atualizar status automaticamente
+          if (cliente.situacao === "INADIMPLENTE") {
+            return cliente;
+          }
           const diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
           return {
             ...cliente,
@@ -139,6 +143,23 @@ export const useClienteStore = create(
         get().atualizarCliente(id, {
           dataVencimento: novaDataVencimento.toISOString().split("T")[0],
           situacao: "PAGO",
+        });
+      },
+
+      aplicarJuros: (id, diasInadimplente) => {
+        const cliente = get().clientes.find((c) => c.id === id);
+        if (!cliente) return;
+
+        // Calcular juros: (valor mensal / 30) * dias de atraso
+        // Usar parseFloat e toFixed para garantir precisão
+        const valorDiario = parseFloat((cliente.valor / 30).toFixed(4));
+        const valorJuros = parseFloat((valorDiario * diasInadimplente).toFixed(2));
+
+        // Atualizar cliente com juros e situação inadimplente
+        get().atualizarCliente(id, {
+          situacao: "INADIMPLENTE",
+          diasInadimplente: diasInadimplente,
+          valorJuros: valorJuros,
         });
       },
 

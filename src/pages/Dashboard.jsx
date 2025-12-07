@@ -79,8 +79,11 @@ export default function Dashboard() {
 
   // Estatísticas gerais
   const totalClientes = clientes.length;
-  const clientesAPagar = clientes.filter((c) => c.status === "A PAGAR").length;
+  const clientesAPagar = clientes.filter((c) => c.situacao === "PENDENTE").length;
   const clientesPagos = clientes.filter((c) => c.situacao === "PAGO").length;
+  const clientesInadimplentes = clientes.filter(
+    (c) => c.situacao === "INADIMPLENTE"
+  ).length;
   const clientesVencidos = clientes.filter(
     (c) => c.status === "VENCIDO"
   ).length;
@@ -93,6 +96,10 @@ export default function Dashboard() {
   const valorPendente = clientes
     .filter((c) => c.situacao === "PENDENTE")
     .reduce((acc, c) => acc + c.valor, 0);
+
+  const valorJuros = clientes
+    .filter((c) => c.situacao === "INADIMPLENTE")
+    .reduce((acc, c) => acc + (c.valorJuros || 0), 0);
 
   // Faturamento Total (soma de todos os valores, independente da situação)
   const faturamentoTotal = clientes.reduce((acc, c) => acc + c.valor, 0);
@@ -126,9 +133,11 @@ export default function Dashboard() {
   const animatedTotalClientes = useAnimatedValue(totalClientes);
   const animatedClientesAPagar = useAnimatedValue(clientesAPagar);
   const animatedClientesPagos = useAnimatedValue(clientesPagos);
+  const animatedClientesInadimplentes = useAnimatedValue(clientesInadimplentes);
   const animatedClientesVencidos = useAnimatedValue(clientesVencidos);
   const animatedValorJaRecebido = useAnimatedValue(valorJaRecebido, 1500, true);
   const animatedValorPendente = useAnimatedValue(valorPendente, 1500, true);
+  const animatedValorJuros = useAnimatedValue(valorJuros, 1500, true);
   const animatedFaturamentoTotal = useAnimatedValue(
     faturamentoTotal,
     1500,
@@ -145,7 +154,7 @@ export default function Dashboard() {
       description: "Clientes cadastrados",
     },
     {
-      title: "A Pagar",
+      title: "Pendentes",
       value: animatedClientesAPagar,
       icon: AlertCircle,
       iconColor: "yellow",
@@ -157,6 +166,13 @@ export default function Dashboard() {
       icon: CheckCircle,
       iconColor: "green",
       description: "Clientes pagos",
+    },
+    {
+      title: "Inadimplentes",
+      value: animatedClientesInadimplentes,
+      icon: AlertCircle,
+      iconColor: "orange",
+      description: "Clientes inadimplentes",
     },
     {
       title: "Vencidos",
@@ -178,6 +194,13 @@ export default function Dashboard() {
       icon: DollarSign,
       iconColor: "yellow",
       description: "Valor a receber",
+    },
+    {
+      title: "Valor de Juros",
+      value: animatedValorJuros,
+      icon: DollarSign,
+      iconColor: "orange",
+      description: "Total de juros por inadimplência",
     },
     {
       title: "Faturamento Total",
@@ -211,12 +234,14 @@ export default function Dashboard() {
             green: "bg-green-950/70 dark:bg-green-950/80",
             red: "bg-red-950/70 dark:bg-red-950/80",
             yellow: "bg-yellow-950/70 dark:bg-yellow-950/80",
+            orange: "bg-orange-950/70 dark:bg-orange-950/80",
           };
           const iconTextClasses = {
             blue: "text-blue-400 dark:text-blue-300",
             green: "text-green-400 dark:text-green-300",
             red: "text-red-400 dark:text-red-300",
             yellow: "text-yellow-400 dark:text-yellow-300",
+            orange: "text-orange-400 dark:text-orange-300",
           };
           // Faturamento Total e Lucro Total ocupam toda a largura
           const isFullWidthCard =
