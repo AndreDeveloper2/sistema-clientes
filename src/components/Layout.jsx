@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
   Users,
@@ -155,6 +157,29 @@ function HeaderThemeToggle() {
   );
 }
 
+function HeaderAvatar() {
+  const { theme } = useTheme();
+  const avatarSrc = theme === "dark" ? "/AvatarD.png" : "/Avatar.png";
+
+  return (
+    <div className="flex items-center gap-3">
+      <Separator orientation="vertical" className="h-6" />
+      <div className="flex items-center gap-2">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={avatarSrc} alt="Tivius" />
+          <AvatarFallback>TI</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <span className="text-sm font-medium leading-none">Tivius</span>
+          <Badge variant="secondary" className="mt-1 w-fit text-[10px] h-4 px-1.5">
+            Administrador
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LogoutButton() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
@@ -191,6 +216,7 @@ export default function Layout() {
             <SyncStatus />
             <PWAInstallButton />
             <HeaderThemeToggle />
+            <HeaderAvatar />
           </div>
         </header>
         <main className="flex-1 overflow-auto">

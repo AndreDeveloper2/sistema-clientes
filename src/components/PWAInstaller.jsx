@@ -92,12 +92,19 @@ export function PWAInstaller() {
               Adicione o Sistema de Clientes à sua tela inicial para acesso rápido e uso offline.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInstallDialog(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowInstallDialog(false)}
+              className="w-full sm:w-auto"
+            >
               <X className="mr-2 h-4 w-4" />
               Depois
             </Button>
-            <Button onClick={handleInstall}>
+            <Button 
+              onClick={handleInstall}
+              className="w-full sm:w-auto"
+            >
               <Download className="mr-2 h-4 w-4" />
               Instalar
             </Button>

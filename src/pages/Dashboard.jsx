@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useClienteStore } from "@/stores/clienteStore";
 import { useServidorStore } from "@/stores/servidorStore";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import {
   CheckCircle,
   TrendingUp,
   Server,
+  Loader2,
 } from "lucide-react";
 
 // Hook customizado para animar valores
@@ -71,63 +73,108 @@ export default function Dashboard() {
     (state) => state.atualizarStatusTodos
   );
   const init = useClienteStore((state) => state.init);
+  const { isSynced } = useSyncStatus();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     init();
     atualizarStatusTodos();
+    // Aguardar um pouco para garantir que os dados foram carregados
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 100);
+    return () => clearTimeout(timer);
   }, [init, atualizarStatusTodos]);
 
-  // Estatísticas gerais
-  const totalClientes = clientes.length;
-  const clientesAPagar = clientes.filter((c) => c.situacao === "PENDENTE").length;
-  const clientesPagos = clientes.filter((c) => c.situacao === "PAGO").length;
-  const clientesInadimplentes = clientes.filter(
-    (c) => c.situacao === "INADIMPLENTE"
-  ).length;
-  const clientesVencidos = clientes.filter(
-    (c) => c.status === "VENCIDO"
-  ).length;
+  // Forçar atualização quando a sincronização terminar ou quando clientes mudarem
+  useEffect(() => {
+    if (isSynced && isInitialized) {
+      atualizarStatusTodos();
+    }
+  }, [isSynced, isInitialized, atualizarStatusTodos, clientes.length]);
 
-  // Valor já recebido (clientes pagos)
-  const valorJaRecebido = clientes
-    .filter((c) => c.situacao === "PAGO")
-    .reduce((acc, c) => acc + c.valor, 0);
+  // Usar useMemo para recalcular apenas quando necessário
+  const estatisticas = useMemo(() => {
+    // Estatísticas gerais
+    const totalClientes = clientes.length;
+    const clientesAPagar = clientes.filter((c) => c.situacao === "PENDENTE").length;
+    const clientesPagos = clientes.filter((c) => c.situacao === "PAGO").length;
+    const clientesInadimplentes = clientes.filter(
+      (c) => c.situacao === "INADIMPLENTE"
+    ).length;
+    const clientesVencidos = clientes.filter(
+      (c) => c.status === "VENCIDO"
+    ).length;
 
-  const valorPendente = clientes
-    .filter((c) => c.situacao === "PENDENTE")
-    .reduce((acc, c) => acc + c.valor, 0);
-
-  const valorJuros = clientes
-    .filter((c) => c.situacao === "INADIMPLENTE")
-    .reduce((acc, c) => acc + (c.valorJuros || 0), 0);
-
-  // Faturamento Total (soma de todos os valores, independente da situação)
-  const faturamentoTotal = clientes.reduce((acc, c) => acc + c.valor, 0);
-
-  // Lucro Total (soma do lucro de cada cliente)
-  const lucroTotal = clientes.reduce(
-    (acc, c) => acc + (c.lucroCliente || 0),
-    0
-  );
-
-  // Estatísticas por servidor
-  const estatisticasPorServidor = servidores.map((servidor) => {
-    const clientesDoServidor = clientes.filter(
-      (c) => c.servidor === servidor.nome
-    );
-    const totalClientesServidor = clientesDoServidor.length;
-    const custoTotalServidor = servidor.custoBase * totalClientesServidor;
-    const valorRecebidoServidor = clientesDoServidor
+    // Valor já recebido (clientes pagos)
+    const valorJaRecebido = clientes
       .filter((c) => c.situacao === "PAGO")
-      .reduce((acc, c) => acc + c.valor, 0);
+      .reduce((acc, c) => acc + (c.valor || 0), 0);
+
+    const valorPendente = clientes
+      .filter((c) => c.situacao === "PENDENTE")
+      .reduce((acc, c) => acc + (c.valor || 0), 0);
+
+    const valorJuros = clientes
+      .filter((c) => c.situacao === "INADIMPLENTE")
+      .reduce((acc, c) => acc + (c.valorJuros || 0), 0);
+
+    // Faturamento Total (soma de todos os valores, independente da situação)
+    const faturamentoTotal = clientes.reduce((acc, c) => acc + (c.valor || 0), 0);
+
+    // Lucro Total (soma do lucro de cada cliente)
+    const lucroTotal = clientes.reduce(
+      (acc, c) => acc + (c.lucroCliente || 0),
+      0
+    );
 
     return {
-      nome: servidor.nome,
-      totalClientes: totalClientesServidor,
-      custoTotal: custoTotalServidor,
-      valorRecebido: valorRecebidoServidor,
+      totalClientes,
+      clientesAPagar,
+      clientesPagos,
+      clientesInadimplentes,
+      clientesVencidos,
+      valorJaRecebido,
+      valorPendente,
+      valorJuros,
+      faturamentoTotal,
+      lucroTotal,
     };
-  });
+  }, [clientes, isSynced]); // Recalcular quando clientes mudarem ou sincronização terminar
+
+  const {
+    totalClientes,
+    clientesAPagar,
+    clientesPagos,
+    clientesInadimplentes,
+    clientesVencidos,
+    valorJaRecebido,
+    valorPendente,
+    valorJuros,
+    faturamentoTotal,
+    lucroTotal,
+  } = estatisticas;
+
+  // Estatísticas por servidor
+  const estatisticasPorServidor = useMemo(() => {
+    return servidores.map((servidor) => {
+      const clientesDoServidor = clientes.filter(
+        (c) => c.servidor === servidor.nome
+      );
+      const totalClientesServidor = clientesDoServidor.length;
+      const custoTotalServidor = servidor.custoBase * totalClientesServidor;
+      const valorRecebidoServidor = clientesDoServidor
+        .filter((c) => c.situacao === "PAGO")
+        .reduce((acc, c) => acc + (c.valor || 0), 0);
+
+      return {
+        nome: servidor.nome,
+        totalClientes: totalClientesServidor,
+        custoTotal: custoTotalServidor,
+        valorRecebido: valorRecebidoServidor,
+      };
+    });
+  }, [servidores, clientes, isSynced]);
 
   // Valores animados
   const animatedTotalClientes = useAnimatedValue(totalClientes);
@@ -218,12 +265,21 @@ export default function Dashboard() {
     },
   ];
 
+  // Mostrar loading enquanto sincroniza (apenas se Firebase estiver configurado)
+  const showLoading = !isSynced && isInitialized;
+
   return (
     <div className="flex-1 space-y-3 p-3 md:p-4 pt-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
         </div>
+        {showLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="hidden sm:inline">Sincronizando...</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-2 lg:grid-cols-4 md:gap-4">
