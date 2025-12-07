@@ -156,9 +156,22 @@ O arquivo `vercel.json` já está configurado com rewrites para SPA. Se ainda as
 
 **Solução:**
 1. Verifique se todas as variáveis de ambiente estão configuradas na Vercel
-2. Verifique se o domínio está autorizado no Firebase Console
-3. Vá em Firebase Console > Authentication > Settings > Authorized domains
-4. Adicione seu domínio da Vercel (ex: `seu-projeto.vercel.app`)
+2. **Configure as regras de segurança do Firestore** (veja `FIREBASE_PRODUCTION.md`)
+3. Verifique se o domínio está autorizado no Firebase Console
+4. Vá em Firebase Console > Authentication > Settings > Authorized domains
+5. Adicione seu domínio da Vercel (ex: `seu-projeto.vercel.app`)
+
+### ⚠️ IMPORTANTE: Configurar Regras de Produção
+
+**Antes de fazer deploy**, configure as regras de segurança do Firestore:
+
+1. Acesse [Firebase Console](https://console.firebase.google.com/)
+2. Vá em **Firestore Database** > **Regras**
+3. Substitua as regras de teste pelas regras de produção
+4. Veja o arquivo `FIREBASE_PRODUCTION.md` para as regras corretas
+5. Clique em **Publicar**
+
+As regras de teste expiram em 30 dias e permitem acesso total. Use as regras de produção para segurança!
 
 ### Erro: "Analytics não disponível"
 

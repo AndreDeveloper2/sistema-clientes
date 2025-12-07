@@ -6,11 +6,17 @@ export const useAuthStore = create(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      login: (email, password) => {
-        // Login simples - em produção, isso seria validado com backend
-        const user = { email, id: Date.now() }
-        set({ user, isAuthenticated: true })
-        return true
+      login: (username, password) => {
+        // Validação de credenciais
+        const validUsername = 'tivius'
+        const validPassword = '200319Am@@'
+        
+        if (username === validUsername && password === validPassword) {
+          const user = { username, id: Date.now() }
+          set({ user, isAuthenticated: true })
+          return true
+        }
+        return false
       },
       logout: () => {
         set({ user: null, isAuthenticated: false })

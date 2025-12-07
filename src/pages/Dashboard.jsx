@@ -1,8 +1,14 @@
-import { useEffect } from 'react'
-import { useClienteStore } from '@/stores/clienteStore'
-import { useServidorStore } from '@/stores/servidorStore'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatarMoeda } from '@/lib/clienteUtils'
+import { useEffect, useState } from "react";
+import { useClienteStore } from "@/stores/clienteStore";
+import { useServidorStore } from "@/stores/servidorStore";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { formatarMoeda } from "@/lib/clienteUtils";
 import {
   Users,
   DollarSign,
@@ -10,135 +16,242 @@ import {
   CheckCircle,
   TrendingUp,
   Server,
-} from 'lucide-react'
+} from "lucide-react";
 
-export default function Dashboard() {
-  const clientes = useClienteStore((state) => state.clientes)
-  const servidores = useServidorStore((state) => state.servidores)
-  const atualizarStatusTodos = useClienteStore((state) => state.atualizarStatusTodos)
-  const init = useClienteStore((state) => state.init)
+// Hook customizado para animar valores
+function useAnimatedValue(targetValue, duration = 1500, isCurrency = false) {
+  const [animatedValue, setAnimatedValue] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
-    init()
-    atualizarStatusTodos()
-  }, [init, atualizarStatusTodos])
+    if (hasAnimated) {
+      setAnimatedValue(targetValue);
+      return;
+    }
+
+    const startTime = Date.now();
+    const startValue = 0;
+
+    const animate = () => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Easing function (ease-out)
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+
+      const currentValue = startValue + (targetValue - startValue) * easeOut;
+      setAnimatedValue(currentValue);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setAnimatedValue(targetValue);
+        setHasAnimated(true);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      requestAnimationFrame(animate);
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [targetValue, duration, hasAnimated]);
+
+  if (isCurrency) {
+    return formatarMoeda(Math.round(animatedValue));
+  }
+  return Math.round(animatedValue);
+}
+
+export default function Dashboard() {
+  const clientes = useClienteStore((state) => state.clientes);
+  const servidores = useServidorStore((state) => state.servidores);
+  const atualizarStatusTodos = useClienteStore(
+    (state) => state.atualizarStatusTodos
+  );
+  const init = useClienteStore((state) => state.init);
+
+  useEffect(() => {
+    init();
+    atualizarStatusTodos();
+  }, [init, atualizarStatusTodos]);
 
   // Estatísticas gerais
-  const totalClientes = clientes.length
-  const clientesAPagar = clientes.filter((c) => c.status === 'A PAGAR').length
-  const clientesPagos = clientes.filter((c) => c.situacao === 'PAGO').length
-  const clientesVencidos = clientes.filter((c) => c.status === 'VENCIDO').length
+  const totalClientes = clientes.length;
+  const clientesAPagar = clientes.filter((c) => c.status === "A PAGAR").length;
+  const clientesPagos = clientes.filter((c) => c.situacao === "PAGO").length;
+  const clientesVencidos = clientes.filter(
+    (c) => c.status === "VENCIDO"
+  ).length;
 
   const faturamentoTotal = clientes
-    .filter((c) => c.situacao === 'PAGO')
-    .reduce((acc, c) => acc + c.valor, 0)
+    .filter((c) => c.situacao === "PAGO")
+    .reduce((acc, c) => acc + c.valor, 0);
 
   const valorPendente = clientes
-    .filter((c) => c.situacao === 'PENDENTE')
-    .reduce((acc, c) => acc + c.valor, 0)
+    .filter((c) => c.situacao === "PENDENTE")
+    .reduce((acc, c) => acc + c.valor, 0);
 
-  const lucroTotal = clientes.reduce((acc, c) => acc + (c.lucroCliente || 0), 0)
+  const lucroTotal = clientes.reduce(
+    (acc, c) => acc + (c.lucroCliente || 0),
+    0
+  );
 
   // Estatísticas por servidor
   const estatisticasPorServidor = servidores.map((servidor) => {
-    const clientesDoServidor = clientes.filter((c) => c.servidor === servidor.nome)
-    const totalClientesServidor = clientesDoServidor.length
-    const custoTotalServidor = servidor.custoBase * totalClientesServidor
+    const clientesDoServidor = clientes.filter(
+      (c) => c.servidor === servidor.nome
+    );
+    const totalClientesServidor = clientesDoServidor.length;
+    const custoTotalServidor = servidor.custoBase * totalClientesServidor;
     const valorRecebidoServidor = clientesDoServidor
-      .filter((c) => c.situacao === 'PAGO')
-      .reduce((acc, c) => acc + c.valor, 0)
+      .filter((c) => c.situacao === "PAGO")
+      .reduce((acc, c) => acc + c.valor, 0);
 
     return {
       nome: servidor.nome,
       totalClientes: totalClientesServidor,
       custoTotal: custoTotalServidor,
       valorRecebido: valorRecebidoServidor,
-    }
-  })
+    };
+  });
+
+  // Valores animados
+  const animatedTotalClientes = useAnimatedValue(totalClientes);
+  const animatedClientesAPagar = useAnimatedValue(clientesAPagar);
+  const animatedClientesPagos = useAnimatedValue(clientesPagos);
+  const animatedClientesVencidos = useAnimatedValue(clientesVencidos);
+  const animatedFaturamentoTotal = useAnimatedValue(
+    faturamentoTotal,
+    1500,
+    true
+  );
+  const animatedValorPendente = useAnimatedValue(valorPendente, 1500, true);
+  const animatedLucroTotal = useAnimatedValue(lucroTotal, 1500, true);
 
   const statCards = [
     {
-      title: 'Total de Clientes',
-      value: totalClientes,
+      title: "Total de Clientes",
+      value: animatedTotalClientes,
       icon: Users,
-      description: 'Clientes cadastrados',
+      iconColor: "blue",
+      description: "Clientes cadastrados",
     },
     {
-      title: 'A Pagar',
-      value: clientesAPagar,
+      title: "A Pagar",
+      value: animatedClientesAPagar,
       icon: AlertCircle,
-      description: 'Clientes com pagamento pendente',
-      className: 'text-yellow-600 dark:text-yellow-400',
+      iconColor: "yellow",
+      description: "Clientes com pagamento pendente",
     },
     {
-      title: 'Pagos',
-      value: clientesPagos,
+      title: "Pagos",
+      value: animatedClientesPagos,
       icon: CheckCircle,
-      description: 'Clientes pagos',
-      className: 'text-green-600 dark:text-green-400',
+      iconColor: "green",
+      description: "Clientes pagos",
     },
     {
-      title: 'Vencidos',
-      value: clientesVencidos,
+      title: "Vencidos",
+      value: animatedClientesVencidos,
       icon: AlertCircle,
-      description: 'Clientes com pagamento vencido',
-      className: 'text-red-600 dark:text-red-400',
+      iconColor: "red",
+      description: "Clientes com pagamento vencido",
     },
     {
-      title: 'Faturamento Total',
-      value: formatarMoeda(faturamentoTotal),
+      title: "Faturamento Total",
+      value: animatedFaturamentoTotal,
       icon: DollarSign,
-      description: 'Valor total recebido',
-      className: 'text-green-600 dark:text-green-400',
+      iconColor: "green",
+      description: "Valor total recebido",
     },
     {
-      title: 'Valor Pendente',
-      value: formatarMoeda(valorPendente),
+      title: "Valor Pendente",
+      value: animatedValorPendente,
       icon: DollarSign,
-      description: 'Valor a receber',
-      className: 'text-yellow-600 dark:text-yellow-400',
+      iconColor: "yellow",
+      description: "Valor a receber",
     },
     {
-      title: 'Lucro Total',
-      value: formatarMoeda(lucroTotal),
+      title: "Lucro Total",
+      value: animatedLucroTotal,
       icon: TrendingUp,
-      description: 'Lucro líquido',
-      className: 'text-blue-600 dark:text-blue-400',
+      iconColor: "blue",
+      description: "Lucro líquido",
     },
-  ]
+  ];
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6 pt-6">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex-1 space-y-3 p-3 md:p-4 pt-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Visão geral do sistema de gestão de clientes
-          </p>
+          <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-2 lg:grid-cols-4 md:gap-4">
+        {statCards.map((stat, index) => {
+          const Icon = stat.icon;
+          const iconColorClasses = {
+            blue: "bg-blue-950/70 dark:bg-blue-950/80",
+            green: "bg-green-950/70 dark:bg-green-950/80",
+            red: "bg-red-950/70 dark:bg-red-950/80",
+            yellow: "bg-yellow-950/70 dark:bg-yellow-950/80",
+          };
+          const iconTextClasses = {
+            blue: "text-blue-400 dark:text-blue-300",
+            green: "text-green-400 dark:text-green-300",
+            red: "text-red-400 dark:text-red-300",
+            yellow: "text-yellow-400 dark:text-yellow-300",
+          };
+          const isLastCard = index === statCards.length - 1;
           return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <Icon className={`h-4 w-4 ${stat.className || 'text-muted-foreground'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${stat.className || ''}`}>
-                  {stat.value}
+            <Card
+              key={stat.title}
+              className={`dashboard-card rounded-lg border-0 ${
+                isLastCard ? "col-span-2 md:col-span-1 lg:col-span-1" : ""
+              }`}
+            >
+              <CardContent
+                className={`p-3 md:p-6 ${isLastCard ? "text-center" : ""}`}
+              >
+                <div
+                  className={`flex items-start gap-3 ${
+                    isLastCard ? "flex-col items-center justify-center" : ""
+                  }`}
+                >
+                  <div
+                    className={`rounded-full p-2.5 flex-shrink-0 ${
+                      iconColorClasses[stat.iconColor]
+                    }`}
+                  >
+                    <Icon
+                      className={`h-5 w-5 md:h-6 md:w-6 stroke-[2.5] ${
+                        iconTextClasses[stat.iconColor]
+                      }`}
+                    />
+                  </div>
+                  <div
+                    className={`flex-1 min-w-0 ${
+                      isLastCard ? "text-center" : ""
+                    }`}
+                  >
+                    <CardTitle
+                      className={`text-xs md:text-sm font-medium ${
+                        isLastCard ? "" : "truncate"
+                      } mb-1`}
+                    >
+                      {stat.title}
+                    </CardTitle>
+                    <div className="text-lg md:text-2xl font-bold text-foreground">
+                      {stat.value}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.description}
-                </p>
               </CardContent>
             </Card>
-          )
+          );
         })}
       </div>
 
@@ -147,7 +260,10 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold mb-4">Estatísticas por Servidor</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {estatisticasPorServidor.map((stat) => (
-            <Card key={stat.nome}>
+            <Card
+              key={stat.nome}
+              className="dashboard-card rounded-lg border-0"
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Server className="h-5 w-5" />
@@ -157,15 +273,23 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total de Clientes:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Total de Clientes:
+                  </span>
                   <span className="font-semibold">{stat.totalClientes}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Custo Total:</span>
-                  <span className="font-semibold">{formatarMoeda(stat.custoTotal)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    Custo Total:
+                  </span>
+                  <span className="font-semibold">
+                    {formatarMoeda(stat.custoTotal)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Valor Recebido:</span>
+                  <span className="text-sm text-muted-foreground">
+                    Valor Recebido:
+                  </span>
                   <span className="font-semibold text-green-600 dark:text-green-400">
                     {formatarMoeda(stat.valorRecebido)}
                   </span>
@@ -175,7 +299,7 @@ export default function Dashboard() {
           ))}
         </div>
         {estatisticasPorServidor.length === 0 && (
-          <Card>
+          <Card className="dashboard-card rounded-lg border-0">
             <CardContent className="py-6 text-center text-muted-foreground">
               Nenhum servidor cadastrado
             </CardContent>
@@ -183,6 +307,5 @@ export default function Dashboard() {
         )}
       </div>
     </div>
-  )
+  );
 }
-

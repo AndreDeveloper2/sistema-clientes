@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
@@ -16,17 +16,17 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    if (!email || !password) {
+    if (!username || !password) {
       toast.error('Por favor, preencha todos os campos')
       return
     }
 
-    const success = login(email, password)
+    const success = login(username, password)
     if (success) {
       toast.success('Login realizado com sucesso!')
       navigate('/dashboard')
     } else {
-      toast.error('Erro ao fazer login')
+      toast.error('Usuário ou senha incorretos')
     }
   }
 
@@ -44,14 +44,15 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Usuário</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="Digite seu usuário"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
+                autoComplete="username"
               />
             </div>
             <div className="space-y-2">

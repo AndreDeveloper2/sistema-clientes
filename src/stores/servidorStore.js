@@ -96,6 +96,22 @@ export const useServidorStore = create(
           lucroTotal,
         }
       },
+
+      limparTodos: async () => {
+        const servidores = get().servidores
+        
+        // Deletar todos do Firebase
+        const deletePromises = servidores.map(servidor => 
+          deleteServidorFromFirebase(servidor.id).catch(error => {
+            console.error(`Erro ao deletar servidor ${servidor.id} do Firebase:`, error)
+          })
+        )
+        
+        await Promise.all(deletePromises)
+        
+        // Limpar do store
+        set({ servidores: [] })
+      },
     }),
     {
       name: 'servidores-storage',
