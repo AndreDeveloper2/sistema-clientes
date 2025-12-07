@@ -81,14 +81,49 @@
   }
   html {
     color-scheme: light;
+    background-color: #ffffff;
   }
   html.dark {
     color-scheme: dark;
+    background-color: #0a0a0a;
+  }
+  html.light {
+    color-scheme: light !important;
+    background-color: #ffffff !important;
   }
 
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.3s ease, color 0.3s ease;
+    background-color: var(--background);
+  }
+  
+  /* Garantir que o tema claro tenha fundo branco no mobile */
+  html.light body {
+    background-color: #ffffff !important;
+  }
+  
+  html.dark body {
+    background-color: var(--background) !important;
+  }
+  
+  /* Forçar cores corretas no tema claro para mobile */
+  html.light {
+    --background: oklch(1 0 0) !important;
+    --foreground: oklch(0.141 0.005 285.823) !important;
+    --card: oklch(1 0 0) !important;
+    --card-foreground: oklch(0.141 0.005 285.823) !important;
+    --popover: oklch(1 0 0) !important;
+    --popover-foreground: oklch(0.141 0.005 285.823) !important;
+    --muted: oklch(0.967 0.001 286.375) !important;
+    --muted-foreground: oklch(0.552 0.016 285.938) !important;
+    --accent: oklch(0.967 0.001 286.375) !important;
+    --accent-foreground: oklch(0.21 0.006 285.885) !important;
+    --border: oklch(0.92 0.004 286.32) !important;
+    --input: oklch(0.92 0.004 286.32) !important;
+    --sidebar: oklch(0.985 0 0) !important;
+    --sidebar-background: oklch(0.984 0.003 247.858) !important;
+    --sidebar-foreground: oklch(0.141 0.005 285.823) !important;
   }
 
   /* Forçar background opaco na sidebar mobile */

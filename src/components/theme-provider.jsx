@@ -23,12 +23,15 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
 
   useEffect(() => {
     const root = window.document.documentElement
+    const body = window.document.body
 
+    // Remover todas as classes de tema
     root.classList.remove("light", "dark")
 
     // Sempre usar o tema escolhido pelo usuário, ignorar preferência do sistema
     let currentTheme = theme === "system" ? "light" : theme
 
+    // Adicionar classe do tema
     root.classList.add(currentTheme)
     
     // Força a atualização do tema e ignora preferência do sistema
@@ -36,9 +39,16 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
     if (currentTheme === "dark") {
       root.style.colorScheme = "dark"
       root.style.setProperty("color-scheme", "dark", "important")
+      body.style.colorScheme = "dark"
+      body.style.setProperty("color-scheme", "dark", "important")
     } else {
       root.style.colorScheme = "light"
       root.style.setProperty("color-scheme", "light", "important")
+      body.style.colorScheme = "light"
+      body.style.setProperty("color-scheme", "light", "important")
+      // Forçar background branco no tema claro
+      root.style.backgroundColor = "#ffffff"
+      body.style.backgroundColor = "#ffffff"
     }
     
     // Forçar meta tag para evitar que o navegador use a preferência do sistema
@@ -50,8 +60,14 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
     }
     metaThemeColor.setAttribute('content', currentTheme === "dark" ? "#0a0a0a" : "#ffffff")
     
-    // Forçar também no body para garantir
-    document.body.style.colorScheme = currentTheme
+    // Adicionar meta tag para iOS Safari
+    let appleMobileWebAppStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    if (!appleMobileWebAppStatusBar) {
+      appleMobileWebAppStatusBar = document.createElement('meta')
+      appleMobileWebAppStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style')
+      document.head.appendChild(appleMobileWebAppStatusBar)
+    }
+    appleMobileWebAppStatusBar.setAttribute('content', currentTheme === "dark" ? "black-translucent" : "default")
   }, [theme])
 
   const value = {
