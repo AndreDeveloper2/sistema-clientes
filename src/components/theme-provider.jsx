@@ -23,10 +23,10 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
 
   useEffect(() => {
     const root = window.document.documentElement
-    const body = window.document.body
+    const body = document.body
 
     // Remover todas as classes de tema
-    root.classList.remove("light", "dark")
+    root.classList.remove("light", "dark", "system")
 
     // Sempre usar o tema escolhido pelo usuário, ignorar preferência do sistema
     let currentTheme = theme === "system" ? "light" : theme
@@ -34,40 +34,33 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
     // Adicionar classe do tema
     root.classList.add(currentTheme)
     
-    // Força a atualização do tema e ignora preferência do sistema
-    // Usar !important via style para sobrescrever qualquer preferência do sistema
+    // Forçar color-scheme via JavaScript com !important para sobrescrever qualquer preferência do sistema
     if (currentTheme === "dark") {
-      root.style.colorScheme = "dark"
       root.style.setProperty("color-scheme", "dark", "important")
-      body.style.colorScheme = "dark"
       body.style.setProperty("color-scheme", "dark", "important")
     } else {
-      root.style.colorScheme = "light"
       root.style.setProperty("color-scheme", "light", "important")
-      body.style.colorScheme = "light"
       body.style.setProperty("color-scheme", "light", "important")
-      // Forçar background branco no tema claro
-      root.style.backgroundColor = "#ffffff"
-      body.style.backgroundColor = "#ffffff"
     }
     
-    // Forçar meta tag para evitar que o navegador use a preferência do sistema
+    // Forçar meta tag theme-color para mobile (evita que o navegador use preferência do sistema)
     let metaThemeColor = document.querySelector('meta[name="theme-color"]')
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta')
       metaThemeColor.setAttribute('name', 'theme-color')
       document.head.appendChild(metaThemeColor)
     }
+    // Cores mais específicas para mobile
     metaThemeColor.setAttribute('content', currentTheme === "dark" ? "#0a0a0a" : "#ffffff")
     
-    // Adicionar meta tag para iOS Safari
-    let appleMobileWebAppStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-    if (!appleMobileWebAppStatusBar) {
-      appleMobileWebAppStatusBar = document.createElement('meta')
-      appleMobileWebAppStatusBar.setAttribute('name', 'apple-mobile-web-app-status-bar-style')
-      document.head.appendChild(appleMobileWebAppStatusBar)
+    // Adicionar meta tag para Apple (iOS)
+    let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    if (!appleMeta) {
+      appleMeta = document.createElement('meta')
+      appleMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style')
+      document.head.appendChild(appleMeta)
     }
-    appleMobileWebAppStatusBar.setAttribute('content', currentTheme === "dark" ? "black-translucent" : "default")
+    appleMeta.setAttribute('content', currentTheme === "dark" ? "black" : "default")
   }, [theme])
 
   const value = {

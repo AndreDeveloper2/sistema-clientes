@@ -6,6 +6,17 @@
     <link rel="alternate icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
+    <script>
+      // Aplicar tema imediatamente antes do carregamento para evitar flash
+      (function() {
+        const theme = localStorage.getItem('vite-ui-theme') || 'light';
+        const currentTheme = theme === 'system' ? 'light' : theme;
+        document.documentElement.classList.remove('light', 'dark', 'system');
+        document.documentElement.classList.add(currentTheme);
+        document.documentElement.style.setProperty('color-scheme', currentTheme, 'important');
+        document.body.style.setProperty('color-scheme', currentTheme, 'important');
+      })();
+    </script>
     <meta name="description" content="Sistema de gestão de clientes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
