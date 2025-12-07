@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { PWAInstaller } from "@/components/PWAInstaller";
 import { useAuthStore } from "@/stores/authStore";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
@@ -36,6 +37,7 @@ function App() {
           </Route>
         </Routes>
         <Toaster />
+        <PWAInstaller />
       </BrowserRouter>
     </ThemeProvider>
   );

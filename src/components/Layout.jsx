@@ -15,6 +15,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Users,
@@ -27,6 +28,7 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
 import { SyncStatus } from "@/components/SyncStatus";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 
 const menuItems = [
   {
@@ -129,6 +131,30 @@ function ThemeToggleButton() {
   );
 }
 
+function HeaderThemeToggle() {
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={toggleTheme}
+      className="h-7 w-7"
+      title={theme === "dark" ? "Alternar para tema claro" : "Alternar para tema escuro"}
+    >
+      {theme === "dark" ? (
+        <Sun className="h-3.5 w-3.5" />
+      ) : (
+        <Moon className="h-3.5 w-3.5" />
+      )}
+    </Button>
+  );
+}
+
 function LogoutButton() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
@@ -161,7 +187,11 @@ export default function Layout() {
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3 justify-between">
           <SidebarTrigger />
-          <SyncStatus />
+          <div className="flex items-center gap-2">
+            <SyncStatus />
+            <PWAInstallButton />
+            <HeaderThemeToggle />
+          </div>
         </header>
         <main className="flex-1 overflow-auto">
           <Outlet />
