@@ -85,7 +85,8 @@ export default function Dashboard() {
     (c) => c.status === "VENCIDO"
   ).length;
 
-  const faturamentoTotal = clientes
+  // Valor já recebido (clientes pagos)
+  const valorJaRecebido = clientes
     .filter((c) => c.situacao === "PAGO")
     .reduce((acc, c) => acc + c.valor, 0);
 
@@ -93,6 +94,10 @@ export default function Dashboard() {
     .filter((c) => c.situacao === "PENDENTE")
     .reduce((acc, c) => acc + c.valor, 0);
 
+  // Faturamento Total (soma de todos os valores, independente da situação)
+  const faturamentoTotal = clientes.reduce((acc, c) => acc + c.valor, 0);
+
+  // Lucro Total (soma do lucro de cada cliente)
   const lucroTotal = clientes.reduce(
     (acc, c) => acc + (c.lucroCliente || 0),
     0
@@ -122,12 +127,13 @@ export default function Dashboard() {
   const animatedClientesAPagar = useAnimatedValue(clientesAPagar);
   const animatedClientesPagos = useAnimatedValue(clientesPagos);
   const animatedClientesVencidos = useAnimatedValue(clientesVencidos);
+  const animatedValorJaRecebido = useAnimatedValue(valorJaRecebido, 1500, true);
+  const animatedValorPendente = useAnimatedValue(valorPendente, 1500, true);
   const animatedFaturamentoTotal = useAnimatedValue(
     faturamentoTotal,
     1500,
     true
   );
-  const animatedValorPendente = useAnimatedValue(valorPendente, 1500, true);
   const animatedLucroTotal = useAnimatedValue(lucroTotal, 1500, true);
 
   const statCards = [
@@ -160,11 +166,11 @@ export default function Dashboard() {
       description: "Clientes com pagamento vencido",
     },
     {
-      title: "Faturamento Total",
-      value: animatedFaturamentoTotal,
+      title: "Valor já recebido",
+      value: animatedValorJaRecebido,
       icon: DollarSign,
       iconColor: "green",
-      description: "Valor total recebido",
+      description: "Total já pago este mês",
     },
     {
       title: "Valor Pendente",
@@ -174,11 +180,18 @@ export default function Dashboard() {
       description: "Valor a receber",
     },
     {
+      title: "Faturamento Total",
+      value: animatedFaturamentoTotal,
+      icon: DollarSign,
+      iconColor: "blue",
+      description: "Total bruto de todos os clientes",
+    },
+    {
       title: "Lucro Total",
       value: animatedLucroTotal,
       icon: TrendingUp,
-      iconColor: "blue",
-      description: "Lucro líquido",
+      iconColor: "green",
+      description: "Lucro líquido total",
     },
   ];
 
@@ -205,20 +218,24 @@ export default function Dashboard() {
             red: "text-red-400 dark:text-red-300",
             yellow: "text-yellow-400 dark:text-yellow-300",
           };
-          const isLastCard = index === statCards.length - 1;
+          // Faturamento Total e Lucro Total ocupam toda a largura
+          const isFullWidthCard =
+            stat.title === "Faturamento Total" || stat.title === "Lucro Total";
           return (
             <Card
               key={stat.title}
               className={`dashboard-card rounded-lg border-0 ${
-                isLastCard ? "col-span-2 md:col-span-1 lg:col-span-1" : ""
+                isFullWidthCard ? "col-span-2 md:col-span-2 lg:col-span-2" : ""
               }`}
             >
               <CardContent
-                className={`p-3 md:p-6 ${isLastCard ? "text-center" : ""}`}
+                className={`p-3 md:p-6 ${isFullWidthCard ? "text-center" : ""}`}
               >
                 <div
                   className={`flex items-start gap-3 ${
-                    isLastCard ? "flex-col items-center justify-center" : ""
+                    isFullWidthCard
+                      ? "flex-col items-center justify-center"
+                      : ""
                   }`}
                 >
                   <div
@@ -234,12 +251,12 @@ export default function Dashboard() {
                   </div>
                   <div
                     className={`flex-1 min-w-0 ${
-                      isLastCard ? "text-center" : ""
+                      isFullWidthCard ? "text-center" : ""
                     }`}
                   >
                     <CardTitle
                       className={`text-xs md:text-sm font-medium ${
-                        isLastCard ? "" : "truncate"
+                        isFullWidthCard ? "" : "truncate"
                       } mb-1`}
                     >
                       {stat.title}
