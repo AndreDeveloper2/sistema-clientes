@@ -172,8 +172,6 @@ export default function Clientes() {
             cliente.diasRestantes >= 0 && cliente.diasRestantes <= 5;
         } else if (filtroStatus === "EM DIA") {
           matchStatus = cliente.diasRestantes > 5;
-        } else if (filtroStatus === "INADIMPLENTE") {
-          matchStatus = cliente.situacao === "INADIMPLENTE";
         }
       }
 
@@ -930,7 +928,6 @@ export default function Clientes() {
                   <SelectItem value="VENCIDO">Vencido</SelectItem>
                   <SelectItem value="A VENCER">A Vencer</SelectItem>
                   <SelectItem value="EM DIA">Em Dia</SelectItem>
-                  <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
