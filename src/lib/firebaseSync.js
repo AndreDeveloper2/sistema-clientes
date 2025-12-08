@@ -430,13 +430,23 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
       }
     },
     (error) => {
+      // Ignorar erros de bloqueio por extensões do navegador (adblockers)
+      if (error.code === 'cancelled' || error.message?.includes('blocked') || error.message?.includes('ERR_BLOCKED')) {
+        console.warn("Conexão com Firebase bloqueada por extensão do navegador. Sistema funcionará offline.");
+        onSyncStatusChange?.("offline");
+        return;
+      }
+      
       if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
         quotaExceeded = true;
         console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
         onSyncStatusChange?.("offline");
+      } else if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        console.warn("Firebase temporariamente indisponível. Sistema funcionará offline.");
+        onSyncStatusChange?.("offline");
       } else {
-      console.error("Erro no listener de clientes:", error);
-      onSyncStatusChange?.("error");
+        console.error("Erro no listener de clientes:", error);
+        onSyncStatusChange?.("error");
       }
     }
   );
@@ -480,13 +490,23 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
       }
     },
     (error) => {
+      // Ignorar erros de bloqueio por extensões do navegador (adblockers)
+      if (error.code === 'cancelled' || error.message?.includes('blocked') || error.message?.includes('ERR_BLOCKED')) {
+        console.warn("Conexão com Firebase bloqueada por extensão do navegador. Sistema funcionará offline.");
+        onSyncStatusChange?.("offline");
+        return;
+      }
+      
       if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
         quotaExceeded = true;
         console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
         onSyncStatusChange?.("offline");
+      } else if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        console.warn("Firebase temporariamente indisponível. Sistema funcionará offline.");
+        onSyncStatusChange?.("offline");
       } else {
-      console.error("Erro no listener de servidores:", error);
-      onSyncStatusChange?.("error");
+        console.error("Erro no listener de servidores:", error);
+        onSyncStatusChange?.("error");
       }
     }
   );

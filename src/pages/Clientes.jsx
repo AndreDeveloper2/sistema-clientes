@@ -1137,17 +1137,18 @@ export default function Clientes() {
                           {formatarMoeda(cliente.valor)}
                         </span>
                           {cliente.situacao === "INADIMPLENTE" &&
-                            cliente.valorJuros && (
+                            cliente.valorJuros &&
+                            cliente.valorJuros > 0 ? (
                               <span className="text-[10px] text-orange-600 dark:text-orange-400">
                                 + {formatarMoeda(cliente.valorJuros)} juros
                               </span>
-                            )}
+                            ) : null}
                           {cliente.descontoIndicacao &&
-                            cliente.descontoIndicacao > 0 && (
+                            cliente.descontoIndicacao > 0 ? (
                               <span className="text-[10px] text-purple-600 dark:text-purple-400">
                                 - {formatarMoeda(cliente.descontoIndicacao)} desconto
                               </span>
-                            )}
+                            ) : null}
                         </div>
                       </div>
 
@@ -1462,16 +1463,17 @@ export default function Clientes() {
                           <div className="flex flex-col">
                             <span>{formatarMoeda(cliente.valor)}</span>
                             {cliente.situacao === "INADIMPLENTE" &&
-                              cliente.valorJuros && (
+                              cliente.valorJuros &&
+                              cliente.valorJuros > 0 ? (
                                 <span className="text-[10px] text-orange-600 dark:text-orange-400">
                                   + {formatarMoeda(cliente.valorJuros)} juros
                                 </span>
-                              )}
-                            {cliente.descontoIndicacao && cliente.descontoIndicacao > 0 && (
+                              ) : null}
+                            {cliente.descontoIndicacao && cliente.descontoIndicacao > 0 ? (
                               <span className="text-[10px] text-purple-600 dark:text-purple-400">
                                 - {formatarMoeda(cliente.descontoIndicacao)} desconto
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">

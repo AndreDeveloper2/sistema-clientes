@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
+import { getFirestore, CACHE_SIZE_UNLIMITED, initializeFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 
@@ -32,7 +32,22 @@ let analytics = null
 if (isFirebaseConfigured()) {
   try {
     app = initializeApp(firebaseConfig)
-    db = getFirestore(app)
+    
+    // Inicializar Firestore com cache habilitado (nova API)
+    if (typeof window !== 'undefined') {
+      try {
+        db = initializeFirestore(app, {
+          cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+        })
+      } catch (error) {
+        // Se falhar, usar getFirestore padrão
+        console.warn('Erro ao inicializar Firestore com cache, usando modo padrão:', error)
+        db = getFirestore(app)
+      }
+    } else {
+      db = getFirestore(app)
+    }
+    
     auth = getAuth(app)
     
     // Inicializar Analytics (apenas no browser e se suportado)
@@ -46,15 +61,6 @@ if (isFirebaseConfigured()) {
         console.warn('Analytics não disponível:', error)
       })
     }
-    
-    // Habilitar persistência offline
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Persistência offline já está habilitada em outra aba')
-      } else if (err.code === 'unimplemented') {
-        console.warn('Persistência offline não é suportada neste navegador')
-      }
-    })
     
     console.log('Firebase inicializado com sucesso!')
   } catch (error) {
