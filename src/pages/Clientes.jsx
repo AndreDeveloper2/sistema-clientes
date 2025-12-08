@@ -180,9 +180,19 @@ export default function Clientes() {
       const matchServidor =
         filtroServidor === "TODOS" || cliente.servidor === filtroServidor;
 
-      // Filtro de situação (PENDENTE/PAGO/INADIMPLENTE)
-      const matchSituacao =
-        filtroSituacao === "TODOS" || cliente.situacao === filtroSituacao;
+      // Filtro de situação (PENDENTE/PAGO/INADIMPLENTE/CANCELADOS)
+      // Clientes cancelados só aparecem quando o filtro de situação estiver sendo usado
+      let matchSituacao = true;
+      if (filtroSituacao === "TODOS") {
+        // Se não há filtro de situação, ocultar clientes cancelados
+        matchSituacao = !cliente.cancelado;
+      } else if (filtroSituacao === "CANCELADOS") {
+        // Se o filtro é CANCELADOS, mostrar apenas clientes cancelados
+        matchSituacao = cliente.cancelado;
+      } else {
+        // Se há filtro de situação, aplicar normalmente (mas cancelados não têm situação)
+        matchSituacao = cliente.situacao === filtroSituacao && !cliente.cancelado;
+      }
 
       return matchSearch && matchStatus && matchServidor && matchSituacao;
     })
@@ -251,7 +261,12 @@ export default function Clientes() {
   };
 
   // Função auxiliar para obter classes de cor baseadas nos dias restantes
-  const getCorPorDiasRestantes = (diasRestantes) => {
+  const getCorPorDiasRestantes = (diasRestantes, cancelado = false) => {
+    // Se estiver cancelado, usar cor cinza
+    if (cancelado) {
+      return "text-gray-600 dark:text-gray-400";
+    }
+    
     if (diasRestantes === 0) {
       // Vence hoje: roxo
       return "text-purple-600 dark:text-purple-400";
@@ -268,7 +283,16 @@ export default function Clientes() {
     }
   };
 
-  const getStatusBadge = (status, diasRestantes) => {
+  const getStatusBadge = (status, diasRestantes, cancelado = false) => {
+    // Se estiver cancelado, usar cor cinza
+    if (cancelado) {
+      return (
+        <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20">
+          {status}
+        </Badge>
+      );
+    }
+    
     // Usar a mesma lógica de cores do badge de data de vencimento
     if (diasRestantes === 0) {
       // Vence hoje: roxo
@@ -882,7 +906,7 @@ export default function Clientes() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Buscar</Label>
               <div className="relative">
@@ -907,6 +931,21 @@ export default function Clientes() {
                   <SelectItem value="A VENCER">A Vencer</SelectItem>
                   <SelectItem value="EM DIA">Em Dia</SelectItem>
                   <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Situação</Label>
+              <Select value={filtroSituacao} onValueChange={setFiltroSituacao}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  <SelectItem value="PENDENTE">Pendente</SelectItem>
+                  <SelectItem value="PAGO">Pago</SelectItem>
+                  <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
+                  <SelectItem value="CANCELADOS">Cancelados</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1021,6 +1060,7 @@ export default function Clientes() {
                       <SelectItem value="PENDENTE">Pendente</SelectItem>
                       <SelectItem value="PAGO">Pago</SelectItem>
                       <SelectItem value="INADIMPLENTE">Inadimplente</SelectItem>
+                      <SelectItem value="CANCELADOS">Cancelados</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1115,7 +1155,8 @@ export default function Clientes() {
                         <div className="flex-shrink-0 pt-0.5 flex flex-col gap-1 items-end">
                           {getStatusBadge(
                             cliente.status,
-                            cliente.diasRestantes
+                            cliente.diasRestantes,
+                            cliente.cancelado
                           )}
                           <div className="hidden custom-md:block">
                             {getSituacaoBadge(cliente.situacao, cliente.cancelado)}
@@ -1488,7 +1529,8 @@ export default function Clientes() {
                           ) : (
                           <span
                             className={`${getCorPorDiasRestantes(
-                              cliente.diasRestantes
+                              cliente.diasRestantes,
+                              cliente.cancelado
                             )} font-medium`}
                           >
                             {cliente.diasRestantes}
@@ -1498,7 +1540,8 @@ export default function Clientes() {
                         <TableCell>
                           {getStatusBadge(
                             cliente.status,
-                            cliente.diasRestantes
+                            cliente.diasRestantes,
+                            cliente.cancelado
                           )}
                         </TableCell>
                         <TableCell>
@@ -1801,7 +1844,8 @@ export default function Clientes() {
                   <div className="mt-1">
                     {getStatusBadge(
                       clienteSelecionado.status,
-                      clienteSelecionado.diasRestantes
+                      clienteSelecionado.diasRestantes,
+                      clienteSelecionado.cancelado
                     )}
                   </div>
                 </div>
