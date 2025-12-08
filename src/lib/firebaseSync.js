@@ -451,56 +451,48 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
       }
 
       // Só sincronizar se não houver writes pendentes (mudanças de outros dispositivos)
-      // E apenas se houver mudanças de outros dispositivos (não nossas próprias mudanças)
+      // hasPendingWrites = false significa que as mudanças já foram commitadas no servidor
       if (
         snapshot.metadata.hasPendingWrites === false &&
         snapshot.docChanges().length > 0
       ) {
         try {
-          // Verificar se as mudanças são de outros dispositivos
-          const hasExternalChanges = snapshot.docChanges().some(
-            (change) => change.type === 'modified' || change.type === 'added'
-          );
+          // Aplicar mudanças do Firebase (vindas de outros dispositivos)
+          const clientesLocais = useClienteStore.getState().clientes;
+          const clientesMap = new Map();
           
-          if (hasExternalChanges) {
-            // Fazer merge inteligente em vez de sobrescrever
-            const clientesLocais = useClienteStore.getState().clientes;
-            const clientesMap = new Map();
-            
-            // Primeiro, adicionar todos os clientes locais (prioridade)
-            clientesLocais.forEach((cliente) => {
-              clientesMap.set(cliente.id, cliente);
-            });
-            
-            // Depois, mesclar apenas mudanças específicas do Firebase
-            snapshot.docChanges().forEach((change) => {
-              if (change.type === 'added' || change.type === 'modified') {
-                const data = change.doc.data();
-                const { userId, updatedAt, ...cliente } = data;
-                
-                // Se o cliente já existe localmente, só atualizar se não houver mudanças locais recentes
-                // Por enquanto, vamos preservar dados locais sempre
-                if (!clientesMap.has(cliente.id)) {
-                  // Recalcular status e dias restantes apenas se não for inadimplente
-                  if (cliente.situacao !== "INADIMPLENTE") {
-                    cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
-                    cliente.status = calcularStatus(
-                      cliente.dataVencimento,
-                      cliente.diasRestantes
-                    );
-                  }
-                  clientesMap.set(cliente.id, cliente);
-                }
-              } else if (change.type === 'removed') {
-                // Remover cliente se foi deletado no Firebase
-                clientesMap.delete(change.doc.id.replace(`${USER_ID}_`, ''));
+          // Primeiro, adicionar todos os clientes locais
+          clientesLocais.forEach((cliente) => {
+            clientesMap.set(cliente.id, cliente);
+          });
+          
+          // Depois, aplicar mudanças do Firebase (sobrescrever com dados mais recentes)
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added' || change.type === 'modified') {
+              const data = change.doc.data();
+              const { userId, updatedAt, ...cliente } = data;
+              
+              // Recalcular status e dias restantes apenas se não for inadimplente
+              if (cliente.situacao !== "INADIMPLENTE") {
+                cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
+                cliente.status = calcularStatus(
+                  cliente.dataVencimento,
+                  cliente.diasRestantes
+                );
               }
-            });
-            
-            const clientes = Array.from(clientesMap.values());
-            useClienteStore.setState({ clientes });
-            useClienteStore.getState().atualizarStatusTodos();
-          }
+              
+              // Aplicar mudança do Firebase (sobrescrever dados locais)
+              // Isso garante que renovações e edições de outros dispositivos sejam aplicadas
+              clientesMap.set(cliente.id, cliente);
+            } else if (change.type === 'removed') {
+              // Remover cliente se foi deletado no Firebase
+              clientesMap.delete(change.doc.id.replace(`${USER_ID}_`, ''));
+            }
+          });
+          
+          const clientes = Array.from(clientesMap.values());
+          useClienteStore.setState({ clientes });
+          useClienteStore.getState().atualizarStatusTodos();
           
           if (quotaExceeded) {
             onSyncStatusChange?.("offline");
