@@ -72,8 +72,9 @@ export const useServidorStore = create(
         
         if (!servidor) return null
 
+        // Filtrar apenas clientes não cancelados
         const clientesDoServidor = clientes.filter(
-          (c) => c.servidor === servidor.nome
+          (c) => c.servidor === servidor.nome && !c.cancelado
         )
 
         const totalClientes = clientesDoServidor.length

@@ -96,35 +96,38 @@ export default function Dashboard() {
 
   // Usar useMemo para recalcular apenas quando necessário
   const estatisticas = useMemo(() => {
+    // Filtrar apenas clientes não cancelados
+    const clientesAtivos = clientes.filter((c) => !c.cancelado);
+    
     // Estatísticas gerais
-    const totalClientes = clientes.length;
-    const clientesAPagar = clientes.filter((c) => c.situacao === "PENDENTE").length;
-    const clientesPagos = clientes.filter((c) => c.situacao === "PAGO").length;
-    const clientesInadimplentes = clientes.filter(
+    const totalClientes = clientesAtivos.length;
+    const clientesAPagar = clientesAtivos.filter((c) => c.situacao === "PENDENTE").length;
+    const clientesPagos = clientesAtivos.filter((c) => c.situacao === "PAGO").length;
+    const clientesInadimplentes = clientesAtivos.filter(
       (c) => c.situacao === "INADIMPLENTE"
     ).length;
-    const clientesVencidos = clientes.filter(
+    const clientesVencidos = clientesAtivos.filter(
       (c) => c.status === "VENCIDO"
     ).length;
 
     // Valor já recebido (clientes pagos)
-    const valorJaRecebido = clientes
+    const valorJaRecebido = clientesAtivos
       .filter((c) => c.situacao === "PAGO")
       .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-    const valorPendente = clientes
+    const valorPendente = clientesAtivos
       .filter((c) => c.situacao === "PENDENTE")
       .reduce((acc, c) => acc + (c.valor || 0), 0);
 
-    const valorJuros = clientes
+    const valorJuros = clientesAtivos
       .filter((c) => c.situacao === "INADIMPLENTE")
       .reduce((acc, c) => acc + (c.valorJuros || 0), 0);
 
     // Faturamento Total (soma de todos os valores, independente da situação)
-    const faturamentoTotal = clientes.reduce((acc, c) => acc + (c.valor || 0), 0);
+    const faturamentoTotal = clientesAtivos.reduce((acc, c) => acc + (c.valor || 0), 0);
 
     // Lucro Total (soma do lucro de cada cliente)
-    const lucroTotal = clientes.reduce(
+    const lucroTotal = clientesAtivos.reduce(
       (acc, c) => acc + (c.lucroCliente || 0),
       0
     );
@@ -160,7 +163,7 @@ export default function Dashboard() {
   const estatisticasPorServidor = useMemo(() => {
     return servidores.map((servidor) => {
       const clientesDoServidor = clientes.filter(
-        (c) => c.servidor === servidor.nome
+        (c) => c.servidor === servidor.nome && !c.cancelado
       );
       const totalClientesServidor = clientesDoServidor.length;
       const custoTotalServidor = servidor.custoBase * totalClientesServidor;

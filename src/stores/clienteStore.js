@@ -65,6 +65,7 @@ export const useClienteStore = create(
         const novoCliente = {
           id: uuidv4(),
           ...dadosCliente,
+          cancelado: false,
           diasRestantes,
           status: calcularStatus(dadosCliente.dataVencimento, diasRestantes),
           custoServidor:
@@ -220,6 +221,12 @@ export const useClienteStore = create(
           clientesIndicados: clientesIndicadosAtual + 1,
           descontoIndicacao: parseFloat((descontoTotalAtual + descontoIndicacao).toFixed(2)),
           mesDescontoIndicacao: mesAtual,
+        });
+      },
+
+      marcarComoCancelado: (id, cancelado = true) => {
+        get().atualizarCliente(id, {
+          cancelado: cancelado,
         });
       },
 

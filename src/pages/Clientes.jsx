@@ -73,6 +73,8 @@ import {
   UserPlus,
   Calculator,
   Gift,
+  Ban,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatarData, formatarMoeda, aplicarMascaraWhatsApp, ehClienteNovo } from "@/lib/clienteUtils";
@@ -94,6 +96,7 @@ export default function Clientes() {
   const renovarCliente = useClienteStore((state) => state.renovarCliente);
   const aplicarJuros = useClienteStore((state) => state.aplicarJuros);
   const aplicarIndicacao = useClienteStore((state) => state.aplicarIndicacao);
+  const marcarComoCancelado = useClienteStore((state) => state.marcarComoCancelado);
   const atualizarStatusTodos = useClienteStore(
     (state) => state.atualizarStatusTodos
   );
@@ -302,7 +305,16 @@ export default function Clientes() {
     );
   };
 
-  const getSituacaoBadge = (situacao) => {
+  const getSituacaoBadge = (situacao, cancelado = false) => {
+    // Se estiver cancelado, mostrar apenas badge de cancelado
+    if (cancelado) {
+      return (
+        <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20">
+          CANCELADO
+        </Badge>
+      );
+    }
+    
     if (situacao === "PAGO") {
       return (
         <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/20">
@@ -324,8 +336,17 @@ export default function Clientes() {
     );
   };
 
-  const getDataVencimentoBadge = (dataVencimento, diasRestantes) => {
+  const getDataVencimentoBadge = (dataVencimento, diasRestantes, cancelado = false) => {
     const dataFormatada = formatarData(dataVencimento);
+
+    // Se estiver cancelado, usar cor cinza
+    if (cancelado) {
+      return (
+        <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/20">
+          {dataFormatada}
+        </Badge>
+      );
+    }
 
     if (diasRestantes === 0) {
       // Vence hoje: roxo
@@ -469,6 +490,16 @@ export default function Clientes() {
     setBuscaClienteIndicado("");
     setComboboxAberto(false);
     setDialogIndicacao(true);
+  };
+
+  const handleCancelarCliente = (cliente) => {
+    const estaCancelado = cliente.cancelado || false;
+    marcarComoCancelado(cliente.id, !estaCancelado);
+    toast.success(
+      estaCancelado
+        ? `Cliente ${cliente.nome} reativado com sucesso!`
+        : `Cliente ${cliente.nome} marcado como cancelado!`
+    );
   };
 
   // Filtrar clientes para busca
@@ -846,7 +877,7 @@ export default function Clientes() {
       </div>
 
       {/* Filtros */}
-      <Card className="hidden md:block">
+      <Card className="hidden custom-md:block">
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
@@ -900,7 +931,7 @@ export default function Clientes() {
       </Card>
 
       {/* Versão Mobile - Cards */}
-      <div className="block md:hidden">
+      <div className="block custom-md:hidden">
         {/* Container com background que envolve tudo */}
         <div className="bg-card rounded-lg border p-4 space-y-3">
           {/* Cabeçalho da tabela mobile - Busca, Filtros e Ordenação */}
@@ -1069,7 +1100,7 @@ export default function Clientes() {
                     key={cliente.id}
                     className={`text-sm p-3 client-card-${
                       isPar ? "odd" : "even"
-                    } ${isPar ? "border" : ""}`}
+                    } ${isPar ? "border" : ""} ${cliente.cancelado ? "opacity-60" : ""}`}
                   >
                     <div className="pb-2">
                       <div className="flex items-start justify-between gap-2">
@@ -1086,9 +1117,10 @@ export default function Clientes() {
                             cliente.status,
                             cliente.diasRestantes
                           )}
-                          {cliente.situacao === "INADIMPLENTE" &&
-                            getSituacaoBadge(cliente.situacao)}
-                          {ehClienteNovo(cliente.dataEntrada) && (
+                          <div className="hidden custom-md:block">
+                            {getSituacaoBadge(cliente.situacao, cliente.cancelado)}
+                          </div>
+                          {ehClienteNovo(cliente.dataEntrada) && !cliente.cancelado && (
                             <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20">
                               NOVO
                             </Badge>
@@ -1105,7 +1137,8 @@ export default function Clientes() {
                           <div className="flex flex-col items-end gap-0.5">
                             {getDataVencimentoBadge(
                               cliente.dataVencimento,
-                              cliente.diasRestantes
+                              cliente.diasRestantes,
+                              cliente.cancelado
                             )}
                             <span
                               className={`text-xs ${
@@ -1199,6 +1232,19 @@ export default function Clientes() {
                             title="Registrar Indicação"
                           >
                             <Gift className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelarCliente(cliente)}
+                            className={`h-7 w-7 ${cliente.cancelado ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}`}
+                            title={cliente.cancelado ? "Reativar Cliente" : "Marcar como Cancelado"}
+                          >
+                            {cliente.cancelado ? (
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            ) : (
+                              <Ban className="h-3.5 w-3.5" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
@@ -1325,7 +1371,7 @@ export default function Clientes() {
       </div>
 
       {/* Versão Desktop - Tabela */}
-      <Card className="hidden md:block">
+      <Card className="hidden custom-md:block">
         <CardHeader>
           <CardTitle>Lista de Clientes</CardTitle>
           <CardDescription>
@@ -1412,7 +1458,7 @@ export default function Clientes() {
                     return (
                       <TableRow
                         key={cliente.id}
-                        className="border-0 rounded-2xl"
+                        className={`border-0 rounded-2xl ${cliente.cancelado ? "opacity-60" : ""}`}
                       >
                         <TableCell className="font-medium pl-6 py-4 rounded-l-2xl relative">
                           {ehClienteNovo(cliente.dataEntrada) && (
@@ -1429,7 +1475,8 @@ export default function Clientes() {
                         <TableCell>
                           {getDataVencimentoBadge(
                             cliente.dataVencimento,
-                            cliente.diasRestantes
+                            cliente.diasRestantes,
+                            cliente.cancelado
                           )}
                         </TableCell>
                         <TableCell>
@@ -1455,7 +1502,7 @@ export default function Clientes() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {getSituacaoBadge(cliente.situacao)}
+                          {getSituacaoBadge(cliente.situacao, cliente.cancelado)}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -1474,8 +1521,8 @@ export default function Clientes() {
                           </div>
                         </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">
-                          {/* Botões individuais para desktop (lg e acima) */}
-                          <div className="hidden lg:flex gap-1">
+                          {/* Botões individuais para desktop (1450px e acima) */}
+                          <div className="hidden custom-xl:flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1519,6 +1566,19 @@ export default function Clientes() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => handleCancelarCliente(cliente)}
+                              className={`h-8 w-8 ${cliente.cancelado ? "text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300" : "text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+                              title={cliente.cancelado ? "Reativar Cliente" : "Marcar como Cancelado"}
+                            >
+                              {cliente.cancelado ? (
+                                <RotateCcw className="h-4 w-4" />
+                              ) : (
+                                <Ban className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleExcluirClick(cliente)}
                               className="h-8 w-8"
                             >
@@ -1526,8 +1586,8 @@ export default function Clientes() {
                             </Button>
                           </div>
                           
-                          {/* DropdownMenu para telas médias (md até lg) */}
-                          <div className="flex lg:hidden">
+                          {/* DropdownMenu para telas médias (900px até 1450px) */}
+                          <div className="hidden custom-md:flex custom-xl:hidden">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -1560,6 +1620,22 @@ export default function Clientes() {
                                   Registrar Indicação
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleCancelarCliente(cliente)}
+                                  className={cliente.cancelado ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}
+                                >
+                                  {cliente.cancelado ? (
+                                    <>
+                                      <RotateCcw className="mr-2 h-4 w-4" />
+                                      Reativar Cliente
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      Marcar como Cancelado
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleExcluirClick(cliente)}
                                   className="text-destructive focus:text-destructive"
@@ -1732,7 +1808,7 @@ export default function Clientes() {
                 <div className="space-y-1">
                   <Label className="text-muted-foreground">Situação</Label>
                   <div className="mt-1">
-                    {getSituacaoBadge(clienteSelecionado.situacao)}
+                    {getSituacaoBadge(clienteSelecionado.situacao, clienteSelecionado.cancelado)}
                   </div>
                 </div>
                 <div className="space-y-1">

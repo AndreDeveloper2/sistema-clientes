@@ -7,6 +7,10 @@ export default {
   ],
   theme: {
   	extend: {
+  		screens: {
+  			'custom-md': '900px',
+  			'custom-xl': '1450px',
+  		},
   		colors: {
   			border: 'var(--border)',
   			input: 'var(--input)',
