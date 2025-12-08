@@ -1133,9 +1133,9 @@ export default function Clientes() {
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Valor:</span>
                         <div className="flex flex-col items-end">
-                          <span className="font-semibold">
-                            {formatarMoeda(cliente.valor)}
-                          </span>
+                        <span className="font-semibold">
+                          {formatarMoeda(cliente.valor)}
+                        </span>
                           {cliente.situacao === "INADIMPLENTE" &&
                             cliente.valorJuros && (
                               <span className="text-[10px] text-orange-600 dark:text-orange-400">
@@ -1440,13 +1440,13 @@ export default function Clientes() {
                               {cliente.diasInadimplente} dias inadimplente
                             </span>
                           ) : (
-                            <span
-                              className={`${getCorPorDiasRestantes(
-                                cliente.diasRestantes
-                              )} font-medium`}
-                            >
-                              {cliente.diasRestantes}
-                            </span>
+                          <span
+                            className={`${getCorPorDiasRestantes(
+                              cliente.diasRestantes
+                            )} font-medium`}
+                          >
+                            {cliente.diasRestantes}
+                          </span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -1768,7 +1768,7 @@ export default function Clientes() {
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">WhatsApp</Label>
                     <p className="font-semibold">{clienteSelecionado.whatsapp}</p>
-                  </div>
+              </div>
                 )}
                 {clienteSelecionado.situacao === "INADIMPLENTE" && (
                   <>

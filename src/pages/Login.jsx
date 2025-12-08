@@ -62,7 +62,7 @@ export default function Login() {
       
       {/* Card de login com overlay */}
       <div className={`relative z-10 w-full max-w-md transition-opacity duration-500 ${isSplineLoaded ? 'opacity-100' : 'opacity-0'}`}>
-        <Card className="w-full backdrop-blur-xl bg-white/90 dark:bg-background/80 border-white/20 dark:border-border/50 shadow-lg">
+        <Card className="w-full backdrop-blur-xl bg-white/90 dark:!bg-gray-950/40 dark:border-border/5 border-white/20 shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center text-foreground">
               Sistema de Gestão de Clientes
@@ -83,7 +83,7 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="bg-white/90 dark:bg-background border-white/30 dark:border-input text-foreground"
+                  className="bg-white/90 dark:!bg-gray-950/40 border-white/30 dark:border-border/20"
                 />
               </div>
               <div className="space-y-2">
@@ -95,7 +95,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-white/90 dark:bg-background border-white/30 dark:border-input text-foreground"
+                  className="bg-white/90 dark:!bg-gray-950/40 border-white/30 dark:border-border/20"
                 />
               </div>
               <Button type="submit" className="w-full">
@@ -108,4 +108,3 @@ export default function Login() {
     </div>
   )
 }
-

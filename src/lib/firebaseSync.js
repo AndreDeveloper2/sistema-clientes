@@ -67,7 +67,7 @@ export const syncClientesToFirebase = async () => {
       console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
       console.warn("Para continuar usando Firebase, atualize para o plano Blaze ou aguarde o reset da quota.");
     } else {
-      console.error("Erro ao sincronizar clientes:", error);
+    console.error("Erro ao sincronizar clientes:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando offline
   } finally {
@@ -144,11 +144,11 @@ export const syncClientesFromFirebase = async () => {
       const { userId, updatedAt, ...cliente } = data;
       // Recalcular status e dias restantes apenas se não for inadimplente
       if (cliente.situacao !== "INADIMPLENTE") {
-        cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
-        cliente.status = calcularStatus(
-          cliente.dataVencimento,
-          cliente.diasRestantes
-        );
+      cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
+      cliente.status = calcularStatus(
+        cliente.dataVencimento,
+        cliente.diasRestantes
+      );
       }
       clientes.push(cliente);
     });
@@ -241,7 +241,7 @@ export const addClienteToFirebase = async (cliente) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados salvos apenas localmente.");
     } else {
-      console.error("Erro ao adicionar cliente no Firebase:", error);
+    console.error("Erro ao adicionar cliente no Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -269,7 +269,7 @@ export const updateClienteInFirebase = async (cliente) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados salvos apenas localmente.");
     } else {
-      console.error("Erro ao atualizar cliente no Firebase:", error);
+    console.error("Erro ao atualizar cliente no Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -289,7 +289,7 @@ export const deleteClienteFromFirebase = async (clienteId) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados deletados apenas localmente.");
     } else {
-      console.error("Erro ao deletar cliente do Firebase:", error);
+    console.error("Erro ao deletar cliente do Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -317,7 +317,7 @@ export const addServidorToFirebase = async (servidor) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados salvos apenas localmente.");
     } else {
-      console.error("Erro ao adicionar servidor no Firebase:", error);
+    console.error("Erro ao adicionar servidor no Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -349,7 +349,7 @@ export const updateServidorInFirebase = async (servidor) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados salvos apenas localmente.");
     } else {
-      console.error("Erro ao atualizar servidor no Firebase:", error);
+    console.error("Erro ao atualizar servidor no Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -373,7 +373,7 @@ export const deleteServidorFromFirebase = async (servidorId) => {
       quotaExceeded = true;
       console.warn("Quota do Firebase excedida. Dados deletados apenas localmente.");
     } else {
-      console.error("Erro ao deletar servidor do Firebase:", error);
+    console.error("Erro ao deletar servidor do Firebase:", error);
     }
     // Não lançar erro para permitir que o sistema continue funcionando
   }
@@ -423,8 +423,8 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
             quotaExceeded = true;
             onSyncStatusChange?.("offline");
           } else {
-            console.error("Erro ao sincronizar clientes:", error);
-            onSyncStatusChange?.("error");
+          console.error("Erro ao sincronizar clientes:", error);
+          onSyncStatusChange?.("error");
           }
         }
       }
@@ -435,8 +435,8 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
         console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
         onSyncStatusChange?.("offline");
       } else {
-        console.error("Erro no listener de clientes:", error);
-        onSyncStatusChange?.("error");
+      console.error("Erro no listener de clientes:", error);
+      onSyncStatusChange?.("error");
       }
     }
   );
@@ -473,8 +473,8 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
             quotaExceeded = true;
             onSyncStatusChange?.("offline");
           } else {
-            console.error("Erro ao sincronizar servidores:", error);
-            onSyncStatusChange?.("error");
+          console.error("Erro ao sincronizar servidores:", error);
+          onSyncStatusChange?.("error");
           }
         }
       }
@@ -485,8 +485,8 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
         console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
         onSyncStatusChange?.("offline");
       } else {
-        console.error("Erro no listener de servidores:", error);
-        onSyncStatusChange?.("error");
+      console.error("Erro no listener de servidores:", error);
+      onSyncStatusChange?.("error");
       }
     }
   );

@@ -44,7 +44,7 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
       root.style.setProperty("color-scheme", "light", "important")
       if (body) {
         body.style.setProperty("color-scheme", "light", "important")
-      }
+    }
     }
     
     // Forçar meta tag theme-color para mobile (evita que o navegador use preferência do sistema)
