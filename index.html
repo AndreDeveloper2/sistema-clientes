@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#ffffff" />
     <script>
       // Aplicar tema imediatamente antes do carregamento para evitar flash
+      // IMPORTANTE: Este script NÃO detecta preferência do sistema, apenas usa o tema salvo
       (function() {
         try {
           const theme = localStorage.getItem('vite-ui-theme') || 'light';
@@ -16,18 +17,24 @@
           if (html) {
             html.classList.remove('light', 'dark', 'system');
             html.classList.add(currentTheme);
+            // Forçar color-scheme de múltiplas formas para garantir
             html.style.setProperty('color-scheme', currentTheme, 'important');
+            html.style.colorScheme = currentTheme;
           }
           // Body pode não existir ainda, aplicar quando disponível
+          const applyBodyTheme = function() {
+            if (document.body) {
+              document.body.style.setProperty('color-scheme', currentTheme, 'important');
+              document.body.style.colorScheme = currentTheme;
+            }
+          };
           if (document.body) {
-            document.body.style.setProperty('color-scheme', currentTheme, 'important');
+            applyBodyTheme();
           } else {
             // Aguardar body estar disponível
-            document.addEventListener('DOMContentLoaded', function() {
-              if (document.body) {
-                document.body.style.setProperty('color-scheme', currentTheme, 'important');
-              }
-            });
+            document.addEventListener('DOMContentLoaded', applyBodyTheme);
+            // Fallback caso DOMContentLoaded já tenha acontecido
+            setTimeout(applyBodyTheme, 0);
           }
         } catch (e) {
           // Ignorar erros no script inline

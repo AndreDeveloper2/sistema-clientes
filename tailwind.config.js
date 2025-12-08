@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-    darkMode: ["class"],
+    darkMode: ["class"], // Usar apenas classe, NUNCA media query ou prefers-color-scheme
     content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",

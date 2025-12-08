@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* REGRAS CRÍTICAS: Forçar tema antes de qualquer coisa carregar */
+/* Essas regras têm máxima prioridade e sobrescrevem qualquer preferência do sistema */
+html {
+  color-scheme: light !important;
+}
+
+html.dark {
+  color-scheme: dark !important;
+}
+
 @layer base {
   :root {
     --radius: 0.65rem;
@@ -79,19 +89,93 @@
   * {
     @apply border-border;
   }
+  
+  /* Forçar color-scheme baseado APENAS na classe .dark, IGNORAR completamente prefers-color-scheme */
+  /* Usar !important para sobrescrever qualquer CSS do navegador ou preferência do sistema */
   html {
     color-scheme: light !important;
+    /* Forçar background e foreground para evitar que o navegador aplique cores do sistema */
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
   }
   html.dark {
     color-scheme: dark !important;
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
   }
   html.light {
     color-scheme: light !important;
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+  }
+  
+  /* Garantir que body também use as cores corretas, ignorando preferência do sistema */
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+  }
+  
+  /* Garantir que html sem classe também seja light */
+  html:not(.dark):not(.light) {
+    color-scheme: light !important;
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+  }
+  
+  /* Regras para SOBRESCREVER qualquer prefers-color-scheme do sistema */
+  /* Essas regras garantem que a classe .dark/.light sempre tenha prioridade */
+  @media (prefers-color-scheme: dark) {
+    /* Mesmo que o sistema prefira dark, se html não tiver .dark, usar light */
+    html:not(.dark) {
+      color-scheme: light !important;
+      background-color: var(--background) !important;
+      color: var(--foreground) !important;
+    }
+    /* Se html tiver .dark, usar dark (mesmo que sistema prefira dark) */
+    html.dark {
+      color-scheme: dark !important;
+      background-color: var(--background) !important;
+      color: var(--foreground) !important;
+    }
+  }
+  
+  @media (prefers-color-scheme: light) {
+    /* Mesmo que o sistema prefira light, se html tiver .dark, usar dark */
+    html.dark {
+      color-scheme: dark !important;
+      background-color: var(--background) !important;
+      color: var(--foreground) !important;
+    }
+    /* Se html não tiver .dark, usar light */
+    html:not(.dark) {
+      color-scheme: light !important;
+      background-color: var(--background) !important;
+      color: var(--foreground) !important;
+    }
+  }
+  /* Sobrescrever qualquer media query do navegador */
+  html[style*="color-scheme"] {
+    /* Manter o que foi definido via JavaScript */
   }
 
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* Forçar color-scheme no body também */
+    color-scheme: inherit !important;
+  }
+  
+  /* Garantir que body herde do html */
+  html.dark body {
+    color-scheme: dark !important;
+  }
+  html.light body {
+    color-scheme: light !important;
+  }
+  html:not(.dark) body {
+    color-scheme: light !important;
   }
 
   /* Forçar background opaco na sidebar mobile */

@@ -25,11 +25,11 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
     const root = window.document.documentElement
     const body = document.body
 
+    // Sempre usar o tema escolhido pelo usuário, IGNORAR completamente preferência do sistema
+    let currentTheme = theme === "system" ? "light" : theme
+
     // Remover todas as classes de tema
     root.classList.remove("light", "dark", "system")
-
-    // Sempre usar o tema escolhido pelo usuário, ignorar preferência do sistema
-    let currentTheme = theme === "system" ? "light" : theme
 
     // Adicionar classe do tema
     root.classList.add(currentTheme)
@@ -37,10 +37,14 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
     // Forçar color-scheme via JavaScript com !important para sobrescrever qualquer preferência do sistema
     if (currentTheme === "dark") {
       root.style.setProperty("color-scheme", "dark", "important")
-      body.style.setProperty("color-scheme", "dark", "important")
+      if (body) {
+        body.style.setProperty("color-scheme", "dark", "important")
+      }
     } else {
       root.style.setProperty("color-scheme", "light", "important")
-      body.style.setProperty("color-scheme", "light", "important")
+      if (body) {
+        body.style.setProperty("color-scheme", "light", "important")
+      }
     }
     
     // Forçar meta tag theme-color para mobile (evita que o navegador use preferência do sistema)
@@ -50,10 +54,9 @@ export function ThemeProvider({ children, defaultTheme = "light", storageKey = "
       metaThemeColor.setAttribute('name', 'theme-color')
       document.head.appendChild(metaThemeColor)
     }
-    // Cores mais específicas para mobile
     metaThemeColor.setAttribute('content', currentTheme === "dark" ? "#0a0a0a" : "#ffffff")
     
-    // Adicionar meta tag para Apple (iOS)
+    // Adicionar meta tag para Apple (iOS) - importante para PWA
     let appleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
     if (!appleMeta) {
       appleMeta = document.createElement('meta')

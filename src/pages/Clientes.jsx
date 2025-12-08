@@ -1465,7 +1465,8 @@ export default function Clientes() {
                           </div>
                         </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">
-                          <div className="flex gap-1">
+                          {/* Botões individuais para desktop (lg e acima) */}
+                          <div className="hidden lg:flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -1514,6 +1515,51 @@ export default function Clientes() {
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
+                          </div>
+                          
+                          {/* DropdownMenu para telas médias (md até lg) */}
+                          <div className="flex lg:hidden">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleVisualizar(cliente)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Visualizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditar(cliente)}>
+                                  <Edit className="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleRenovarClick(cliente)}>
+                                  <Zap className="mr-2 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                                  Renovar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleJurosClick(cliente)}>
+                                  <Calculator className="mr-2 h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                  Aplicar Juros
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleIndicacaoClick(cliente)}>
+                                  <Gift className="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                  Registrar Indicação
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleExcluirClick(cliente)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
