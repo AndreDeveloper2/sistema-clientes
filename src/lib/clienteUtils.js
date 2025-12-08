@@ -122,17 +122,10 @@ export function formatarData(data) {
  * Formata valor monetário
  */
 export function formatarMoeda(valor) {
-  // Verificar se o valor é válido (não null, undefined, NaN ou string vazia)
-  if (valor === null || valor === undefined || valor === '' || isNaN(valor)) {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(0);
-  }
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(Number(valor));
+  }).format(valor || 0);
 }
 
 /**

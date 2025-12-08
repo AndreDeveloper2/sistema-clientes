@@ -112,6 +112,16 @@ export const useClienteStore = create(
               atualizado.custoServidor = valorDoServidor * (telas || 1);
               atualizado.lucroCliente = valor - atualizado.custoServidor;
 
+              // Limpar valorJuros se a situação não for mais INADIMPLENTE
+              const situacaoAtualizada = dadosAtualizados.situacao !== undefined
+                ? dadosAtualizados.situacao
+                : atualizado.situacao;
+              
+              if (situacaoAtualizada !== "INADIMPLENTE") {
+                atualizado.valorJuros = 0;
+                atualizado.diasInadimplente = 0;
+              }
+
               const diasRestantes = calcularDiasRestantes(
                 atualizado.dataVencimento
               );
