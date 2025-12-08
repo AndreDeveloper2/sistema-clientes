@@ -121,7 +121,7 @@ export const syncServidoresToFirebase = async () => {
 /**
  * Busca todos os clientes do Firestore e atualiza o LocalStorage
  */
-export const syncClientesFromFirebase = async () => {
+export const syncClientesFromFirebase = async (preserveLocal = false) => {
   if (!isFirebaseConfigured() || !db) {
     console.warn("Firebase não configurado. Pulando sincronização.");
     return [];
@@ -137,7 +137,7 @@ export const syncClientesFromFirebase = async () => {
     );
     const querySnapshot = await getDocs(q);
 
-    const clientes = [];
+    const clientesFirebase = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
       // Remover userId e updatedAt antes de salvar
@@ -150,8 +150,52 @@ export const syncClientesFromFirebase = async () => {
         cliente.diasRestantes
       );
       }
-      clientes.push(cliente);
+      clientesFirebase.push(cliente);
     });
+
+    // Fazer merge inteligente
+    const clientesLocais = useClienteStore.getState().clientes;
+    const clientesMap = new Map();
+    
+    // Se não houver clientes locais, usar apenas dados do Firebase
+    if (clientesLocais.length === 0) {
+      const clientes = clientesFirebase;
+      useClienteStore.setState({ clientes });
+      useClienteStore.getState().atualizarStatusTodos();
+      console.log("Clientes carregados do Firebase");
+      return clientes;
+    }
+    
+    // Se preserveLocal = true, priorizar dados locais (quando envio para Firebase falhou)
+    if (preserveLocal) {
+      // Primeiro, adicionar todos os clientes locais (preservar edições locais)
+      clientesLocais.forEach((cliente) => {
+        clientesMap.set(cliente.id, cliente);
+      });
+      
+      // Depois, adicionar apenas clientes do Firebase que não existem localmente
+      clientesFirebase.forEach((cliente) => {
+        if (!clientesMap.has(cliente.id)) {
+          clientesMap.set(cliente.id, cliente);
+        }
+      });
+    } else {
+      // Se preserveLocal = false, usar dados do Firebase (que já incluem nossas edições locais)
+      // pois enviamos dados locais para Firebase antes de carregar
+      clientesFirebase.forEach((cliente) => {
+        clientesMap.set(cliente.id, cliente);
+      });
+      
+      // Adicionar clientes locais que não estão no Firebase (backup de segurança)
+      clientesLocais.forEach((cliente) => {
+        if (!clientesMap.has(cliente.id)) {
+          clientesMap.set(cliente.id, cliente);
+        }
+      });
+    }
+
+    // Converter map de volta para array
+    const clientes = Array.from(clientesMap.values());
 
     // Atualizar store
     useClienteStore.setState({ clientes });
@@ -407,12 +451,57 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
       }
 
       // Só sincronizar se não houver writes pendentes (mudanças de outros dispositivos)
+      // E apenas se houver mudanças de outros dispositivos (não nossas próprias mudanças)
       if (
         snapshot.metadata.hasPendingWrites === false &&
         snapshot.docChanges().length > 0
       ) {
         try {
-          await syncClientesFromFirebase();
+          // Verificar se as mudanças são de outros dispositivos
+          const hasExternalChanges = snapshot.docChanges().some(
+            (change) => change.type === 'modified' || change.type === 'added'
+          );
+          
+          if (hasExternalChanges) {
+            // Fazer merge inteligente em vez de sobrescrever
+            const clientesLocais = useClienteStore.getState().clientes;
+            const clientesMap = new Map();
+            
+            // Primeiro, adicionar todos os clientes locais (prioridade)
+            clientesLocais.forEach((cliente) => {
+              clientesMap.set(cliente.id, cliente);
+            });
+            
+            // Depois, mesclar apenas mudanças específicas do Firebase
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === 'added' || change.type === 'modified') {
+                const data = change.doc.data();
+                const { userId, updatedAt, ...cliente } = data;
+                
+                // Se o cliente já existe localmente, só atualizar se não houver mudanças locais recentes
+                // Por enquanto, vamos preservar dados locais sempre
+                if (!clientesMap.has(cliente.id)) {
+                  // Recalcular status e dias restantes apenas se não for inadimplente
+                  if (cliente.situacao !== "INADIMPLENTE") {
+                    cliente.diasRestantes = calcularDiasRestantes(cliente.dataVencimento);
+                    cliente.status = calcularStatus(
+                      cliente.dataVencimento,
+                      cliente.diasRestantes
+                    );
+                  }
+                  clientesMap.set(cliente.id, cliente);
+                }
+              } else if (change.type === 'removed') {
+                // Remover cliente se foi deletado no Firebase
+                clientesMap.delete(change.doc.id.replace(`${USER_ID}_`, ''));
+              }
+            });
+            
+            const clientes = Array.from(clientesMap.values());
+            useClienteStore.setState({ clientes });
+            useClienteStore.getState().atualizarStatusTodos();
+          }
+          
           if (quotaExceeded) {
             onSyncStatusChange?.("offline");
             return;
@@ -542,13 +631,19 @@ export const initializeSync = async (onSyncStatusChange) => {
 
     // IMPORTANTE: Primeiro enviar dados locais para o Firebase
     // Isso garante que alterações feitas offline não sejam perdidas
-    // Não aguardar erro aqui, apenas tentar
-    await Promise.all([
-      syncClientesToFirebase(),
-      syncServidoresToFirebase(),
-    ]).catch(() => {
+    let syncSuccess = false;
+    try {
+      await Promise.all([
+        syncClientesToFirebase(),
+        syncServidoresToFirebase(),
+      ]);
+      syncSuccess = true;
+      console.log("Dados locais enviados para Firebase com sucesso");
+    } catch (error) {
       // Erro já foi tratado nas funções individuais
-    });
+      console.warn("Falha ao enviar dados locais para Firebase, mantendo dados locais");
+      syncSuccess = false;
+    }
 
     // Se a quota foi excedida durante o envio, parar aqui
     if (quotaExceeded) {
@@ -558,11 +653,25 @@ export const initializeSync = async (onSyncStatusChange) => {
     }
 
     // Depois carregar dados do Firebase (para pegar alterações de outros dispositivos)
-    // Isso pode sobrescrever dados locais, mas apenas se os dados do Firebase forem mais recentes
-    await Promise.all([
-      syncClientesFromFirebase(),
-      syncServidoresFromFirebase(),
-    ]);
+    // Se o envio foi bem-sucedido, usar dados do Firebase (que já incluem nossas edições)
+    // Se o envio falhou, priorizar dados locais para não perder edições
+    if (syncSuccess) {
+      // Envio bem-sucedido: usar dados do Firebase (que já incluem nossas edições locais)
+      // Isso permite que mudanças de outros dispositivos sejam aplicadas também
+      await Promise.all([
+        syncClientesFromFirebase(false), // false = usar dados do Firebase
+        syncServidoresFromFirebase(),
+      ]);
+    } else {
+      // Envio falhou: fazer merge preservando dados locais
+      console.log("Fazendo merge preservando dados locais devido a falha no envio");
+      await Promise.all([
+        syncClientesFromFirebase(true), // true = preservar dados locais
+        syncServidoresFromFirebase(),
+      ]).catch(() => {
+        // Se também falhar ao carregar, manter dados locais
+      });
+    }
 
     // Se a quota foi excedida durante a leitura, parar aqui
     if (quotaExceeded) {
