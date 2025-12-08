@@ -75,7 +75,7 @@ import {
   Gift,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatarData, formatarMoeda, aplicarMascaraWhatsApp } from "@/lib/clienteUtils";
+import { formatarData, formatarMoeda, aplicarMascaraWhatsApp, ehClienteNovo } from "@/lib/clienteUtils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
@@ -1075,7 +1075,7 @@ export default function Clientes() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-base font-semibold truncate">
-                            {cliente.nome}
+                            <span className="truncate">{cliente.nome}</span>
                           </h3>
                           <p className="text-xs text-muted-foreground truncate mt-0.5">
                             {cliente.servidor}
@@ -1088,6 +1088,11 @@ export default function Clientes() {
                           )}
                           {cliente.situacao === "INADIMPLENTE" &&
                             getSituacaoBadge(cliente.situacao)}
+                          {ehClienteNovo(cliente.dataEntrada) && (
+                            <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20">
+                              NOVO
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1410,8 +1415,13 @@ export default function Clientes() {
                         key={cliente.id}
                         className="border-0 rounded-2xl"
                       >
-                        <TableCell className="font-medium pl-6 py-4 rounded-l-2xl">
-                          {capitalizeName(cliente.nome)}
+                        <TableCell className="font-medium pl-6 py-4 rounded-l-2xl relative">
+                          {ehClienteNovo(cliente.dataEntrada) && (
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+                          )}
+                          <div className="min-w-0 pl-2">
+                            <span className="truncate">{capitalizeName(cliente.nome)}</span>
+                          </div>
                         </TableCell>
                         <TableCell>{cliente.servidor}</TableCell>
                         <TableCell>

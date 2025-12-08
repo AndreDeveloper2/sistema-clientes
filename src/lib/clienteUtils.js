@@ -153,3 +153,43 @@ export function aplicarMascaraWhatsApp(valor) {
     return `(${numerosLimitados.slice(0, 2)}) ${numerosLimitados.slice(2, 7)}-${numerosLimitados.slice(7, 11)}`;
   }
 }
+
+/**
+ * Verifica se um cliente é novo
+ * Cliente novo = data de entrada no mês atual ou nos últimos 2 meses
+ */
+export function ehClienteNovo(dataEntrada) {
+  if (!dataEntrada) return false;
+
+  // Criar data de hoje no início do dia (00:00:00) no timezone local
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  // Criar data de entrada no início do dia (00:00:00) no timezone local
+  let entrada;
+  if (typeof dataEntrada === "string" && dataEntrada.includes("T")) {
+    // Se tem T, é formato ISO com timezone
+    const date = parseISO(dataEntrada);
+    entrada = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  } else if (typeof dataEntrada === "string") {
+    // Formato YYYY-MM-DD - criar data no timezone local
+    const [ano, mes, dia] = dataEntrada.split("-").map(Number);
+    entrada = new Date(ano, mes - 1, dia);
+  } else {
+    // Se já é um objeto Date
+    const date = new Date(dataEntrada);
+    entrada = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  // Garantir que está no início do dia
+  entrada.setHours(0, 0, 0, 0);
+
+  // Calcular diferença em meses
+  const mesesDiferenca = 
+    (hoje.getFullYear() - entrada.getFullYear()) * 12 + 
+    (hoje.getMonth() - entrada.getMonth());
+
+  // Cliente novo se a entrada foi no mês atual ou nos últimos 2 meses
+  // Ou seja, se a diferença for 0, 1 ou 2 meses
+  return mesesDiferenca >= 0 && mesesDiferenca <= 2;
+}
