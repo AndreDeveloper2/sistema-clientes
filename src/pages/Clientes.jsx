@@ -1137,13 +1137,12 @@ export default function Clientes() {
                           {formatarMoeda(cliente.valor)}
                         </span>
                           {cliente.situacao === "INADIMPLENTE" &&
-                            cliente.valorJuros && cliente.valorJuros > 0 && (
+                            cliente.valorJuros > 0 && (
                               <span className="text-[10px] text-orange-600 dark:text-orange-400">
                                 + {formatarMoeda(cliente.valorJuros)} juros
                               </span>
                             )}
-                          {cliente.descontoIndicacao &&
-                            cliente.descontoIndicacao > 0 && (
+                          {cliente.descontoIndicacao > 0 && (
                               <span className="text-[10px] text-purple-600 dark:text-purple-400">
                                 - {formatarMoeda(cliente.descontoIndicacao)} desconto
                               </span>
@@ -1462,12 +1461,12 @@ export default function Clientes() {
                           <div className="flex flex-col">
                             <span>{formatarMoeda(cliente.valor)}</span>
                             {cliente.situacao === "INADIMPLENTE" &&
-                              cliente.valorJuros && cliente.valorJuros > 0 && (
+                              cliente.valorJuros > 0 && (
                                 <span className="text-[10px] text-orange-600 dark:text-orange-400">
                                   + {formatarMoeda(cliente.valorJuros)} juros
                                 </span>
                               )}
-                            {cliente.descontoIndicacao && cliente.descontoIndicacao > 0 && (
+                            {cliente.descontoIndicacao > 0 && (
                               <span className="text-[10px] text-purple-600 dark:text-purple-400">
                                 - {formatarMoeda(cliente.descontoIndicacao)} desconto
                               </span>
@@ -1801,8 +1800,7 @@ export default function Clientes() {
                     </div>
                   </>
                 )}
-                {clienteSelecionado.descontoIndicacao &&
-                  clienteSelecionado.descontoIndicacao > 0 && (
+                {clienteSelecionado.descontoIndicacao > 0 && (
                     <>
                       <div className="space-y-1">
                         <Label className="text-muted-foreground">
