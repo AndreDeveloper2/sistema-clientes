@@ -520,7 +520,25 @@ export const initializeSync = async (onSyncStatusChange) => {
   try {
     onSyncStatusChange?.("syncing");
 
-    // Carregar dados do Firebase
+    // IMPORTANTE: Primeiro enviar dados locais para o Firebase
+    // Isso garante que alterações feitas offline não sejam perdidas
+    // Não aguardar erro aqui, apenas tentar
+    await Promise.all([
+      syncClientesToFirebase(),
+      syncServidoresToFirebase(),
+    ]).catch(() => {
+      // Erro já foi tratado nas funções individuais
+    });
+
+    // Se a quota foi excedida durante o envio, parar aqui
+    if (quotaExceeded) {
+      console.warn("Quota excedida durante sincronização. Usando dados locais.");
+      onSyncStatusChange?.("offline");
+      return () => {};
+    }
+
+    // Depois carregar dados do Firebase (para pegar alterações de outros dispositivos)
+    // Isso pode sobrescrever dados locais, mas apenas se os dados do Firebase forem mais recentes
     await Promise.all([
       syncClientesFromFirebase(),
       syncServidoresFromFirebase(),
@@ -535,12 +553,6 @@ export const initializeSync = async (onSyncStatusChange) => {
 
     // Configurar listeners em tempo real (apenas se não houver quota excedida)
     const unsubscribe = setupRealtimeSync(onSyncStatusChange);
-
-    // Sincronizar dados locais para o Firebase (caso haja dados novos localmente)
-    // Não aguardar erro aqui, apenas tentar
-    Promise.all([syncClientesToFirebase(), syncServidoresToFirebase()]).catch(() => {
-      // Erro já foi tratado nas funções individuais
-    });
 
     onSyncStatusChange?.("synced");
     return unsubscribe;
