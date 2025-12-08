@@ -62,19 +62,19 @@ export default function Login() {
       
       {/* Card de login com overlay */}
       <div className={`relative z-10 w-full max-w-md transition-opacity duration-500 ${isSplineLoaded ? 'opacity-100' : 'opacity-0'}`}>
-        <Card className="w-full backdrop-blur-md bg-background/80 border-border/50 shadow-lg">
+        <Card className="w-full backdrop-blur-xl bg-white/90 dark:bg-background/80 border-white/20 dark:border-border/50 shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">
+            <CardTitle className="text-2xl font-bold text-center text-foreground">
               Sistema de Gestão de Clientes
             </CardTitle>
-            <CardDescription className="text-center">
+            <CardDescription className="text-center text-muted-foreground">
               Faça login para continuar
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Usuário</Label>
+                <Label htmlFor="username" className="text-foreground">Usuário</Label>
                 <Input
                   id="username"
                   type="text"
@@ -83,10 +83,11 @@ export default function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
+                  className="bg-white/90 dark:bg-background border-white/30 dark:border-input text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" className="text-foreground">Senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -94,6 +95,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="bg-white/90 dark:bg-background border-white/30 dark:border-input text-foreground"
                 />
               </div>
               <Button type="submit" className="w-full">
