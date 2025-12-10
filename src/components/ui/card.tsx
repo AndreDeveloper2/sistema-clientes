@@ -9,14 +9,19 @@ const Card = React.forwardRef<
   // Verificar se é um card de cliente ou servidor
   const isClientCard =
     className?.includes("client-card-odd") ||
-    className?.includes("client-card-even");
+    className?.includes("client-card-even") ||
+    className?.includes("log-card-odd") ||
+    className?.includes("log-card-even");
   const isServerCard =
     className?.includes("server-card-odd") ||
     className?.includes("server-card-even");
-  const isCustomCard = isClientCard || isServerCard;
+  const isLogCard =
+    className?.includes("log-card-odd") ||
+    className?.includes("log-card-even");
+  const isCustomCard = isClientCard || isServerCard || isLogCard;
 
-  const isOdd = className?.includes("client-card-odd");
-  const isEven = className?.includes("client-card-even");
+  const isOdd = className?.includes("client-card-odd") || className?.includes("log-card-odd");
+  const isEven = className?.includes("client-card-even") || className?.includes("log-card-even");
 
   // Aplicar efeito glass e sombra diretamente no componente
   const cardStyle = isCustomCard

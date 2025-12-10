@@ -4,7 +4,6 @@ export function Toaster() {
   return (
     <Sonner
       position="top-right"
-      richColors
       closeButton
       toastOptions={{
         classNames: {
@@ -12,6 +11,8 @@ export function Toaster() {
           description: "group-[.toast]:text-muted-foreground",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          success: "border-green-500/50 [&>div>svg]:text-green-600 dark:[&>div>svg]:text-green-400 [&>div>div>div]:text-green-600 dark:[&>div>div>div]:text-green-400",
+          error: "border-red-500/50 [&>div>svg]:text-red-600 dark:[&>div>svg]:text-red-400 [&>div>div>div]:text-red-600 dark:[&>div>div>div]:text-red-400",
         },
       }}
     />

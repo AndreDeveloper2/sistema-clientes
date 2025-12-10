@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import Servidores from "@/pages/Servidores";
 import Configuracoes from "@/pages/Configuracoes";
+import Logs from "@/pages/Logs";
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -34,6 +35,7 @@ function App() {
             <Route path="clientes" element={<Clientes />} />
             <Route path="servidores" element={<Servidores />} />
             <Route path="configuracoes" element={<Configuracoes />} />
+            <Route path="logs" element={<Logs />} />
           </Route>
         </Routes>
         <Toaster />

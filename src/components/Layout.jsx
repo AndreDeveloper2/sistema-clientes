@@ -26,6 +26,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { toast } from "sonner";
@@ -49,9 +50,9 @@ const menuItems = [
     path: "/servidores",
   },
   {
-    title: "Configurações",
-    icon: Settings,
-    path: "/configuracoes",
+    title: "Logs",
+    icon: FileText,
+    path: "/logs",
   },
 ];
 
@@ -82,6 +83,7 @@ function MenuContent() {
                   <SidebarMenuButton
                     onClick={() => handleNavigation(item.path)}
                     isActive={isActive}
+                    tooltip={item.title}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.title}</span>
@@ -98,6 +100,16 @@ function MenuContent() {
           <SidebarMenu>
             <SidebarMenuItem>
               <ThemeToggleButton />
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => handleNavigation("/configuracoes")}
+                isActive={location.pathname === "/configuracoes"}
+                tooltip="Configurações"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Configurações</span>
+              </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <LogoutButton />
@@ -122,7 +134,10 @@ function ThemeToggleButton() {
   };
 
   return (
-    <SidebarMenuButton onClick={toggleTheme}>
+    <SidebarMenuButton 
+      onClick={toggleTheme}
+      tooltip={theme === "dark" ? "Tema Claro" : "Tema Escuro"}
+    >
       {theme === "dark" ? (
         <Sun className="h-4 w-4" />
       ) : (
@@ -196,7 +211,10 @@ function LogoutButton() {
   };
 
   return (
-    <SidebarMenuButton onClick={handleLogout}>
+    <SidebarMenuButton 
+      onClick={handleLogout}
+      tooltip="Sair"
+    >
       <LogOut className="h-4 w-4" />
       <span>Sair</span>
     </SidebarMenuButton>
@@ -206,7 +224,7 @@ function LogoutButton() {
 export default function Layout() {
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <MenuContent />
       </Sidebar>
       <SidebarInset>

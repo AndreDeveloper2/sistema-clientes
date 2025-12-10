@@ -86,6 +86,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function Clientes() {
   const clientes = useClienteStore((state) => state.clientes);
@@ -114,7 +120,9 @@ export default function Clientes() {
   const [dialogJuros, setDialogJuros] = useState(false);
   const [dialogIndicacao, setDialogIndicacao] = useState(false);
   const [dialogNovoClienteIndicacao, setDialogNovoClienteIndicacao] = useState(false);
-  const [diasInadimplente, setDiasInadimplente] = useState("");
+  const [dataJuros, setDataJuros] = useState("");
+  const [dataJurosDate, setDataJurosDate] = useState(null);
+  const [popoverJurosAberto, setPopoverJurosAberto] = useState(false);
   const [clienteIndicadoId, setClienteIndicadoId] = useState("");
   const [buscaClienteIndicado, setBuscaClienteIndicado] = useState("");
   const [comboboxAberto, setComboboxAberto] = useState(false);
@@ -478,13 +486,39 @@ export default function Clientes() {
 
   const handleJurosClick = (cliente) => {
     setClienteSelecionado(cliente);
-    setDiasInadimplente("");
+    // Definir data padrão como a data de vencimento do cliente
+    // Criar data no timezone local para evitar problemas de timezone
+    const [ano, mes, dia] = cliente.dataVencimento.split("-").map(Number);
+    const dataVencimento = new Date(ano, mes - 1, dia);
+    dataVencimento.setHours(0, 0, 0, 0);
+    setDataJurosDate(dataVencimento);
+    setDataJuros(cliente.dataVencimento);
     setDialogJuros(true);
   };
 
   const confirmarJuros = () => {
-    if (clienteSelecionado && diasInadimplente) {
-      const dias = parseInt(diasInadimplente);
+    if (clienteSelecionado && dataJuros) {
+      // Calcular dias de inadimplência a partir da data de vencimento
+      // Criar datas no timezone local para evitar problemas de timezone
+      const [anoVenc, mesVenc, diaVenc] = clienteSelecionado.dataVencimento.split("-").map(Number);
+      const [anoSel, mesSel, diaSel] = dataJuros.split("-").map(Number);
+      
+      const dataVencimento = new Date(anoVenc, mesVenc - 1, diaVenc);
+      const dataSelecionada = new Date(anoSel, mesSel - 1, diaSel);
+      
+      dataVencimento.setHours(0, 0, 0, 0);
+      dataSelecionada.setHours(0, 0, 0, 0);
+      
+      // Verificar se a data selecionada é válida (não pode ser anterior à data de vencimento)
+      if (dataSelecionada < dataVencimento) {
+        toast.error("A data selecionada não pode ser anterior à data de vencimento.");
+        return;
+      }
+
+      // Calcular diferença em dias
+      const diffTime = dataSelecionada.getTime() - dataVencimento.getTime();
+      const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
       if (dias > 0) {
         aplicarJuros(clienteSelecionado.id, dias);
         // Calcular com a mesma precisão do store
@@ -499,9 +533,9 @@ export default function Clientes() {
         );
         setDialogJuros(false);
         setClienteSelecionado(null);
-        setDiasInadimplente("");
+        setDataJuros("");
       } else {
-        toast.error("Por favor, informe um número válido de dias.");
+        toast.error("A data selecionada deve ser posterior à data de vencimento.");
       }
     }
   };
@@ -1562,69 +1596,119 @@ export default function Clientes() {
                         </TableCell>
                         <TableCell className="pr-6 rounded-r-2xl">
                           {/* Botões individuais para desktop (1450px e acima) */}
-                          <div className="hidden custom-xl:flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleVisualizar(cliente)}
-                              className="h-8 w-8"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditar(cliente)}
-                              className="h-8 w-8 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRenovarClick(cliente)}
-                              className="h-8 w-8 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
-                            >
-                              <Zap className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleJurosClick(cliente)}
-                              className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
-                            >
-                              <Calculator className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleIndicacaoClick(cliente)}
-                              className="h-8 w-8 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
-                            >
-                              <Gift className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCancelarCliente(cliente)}
-                              className={`h-8 w-8 ${cliente.cancelado ? "text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300" : "text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
-                              title={cliente.cancelado ? "Reativar Cliente" : "Marcar como Cancelado"}
-                            >
-                              {cliente.cancelado ? (
-                                <RotateCcw className="h-4 w-4" />
-                              ) : (
-                                <Ban className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleExcluirClick(cliente)}
-                              className="h-8 w-8"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          <TooltipProvider>
+                            <div className="hidden custom-xl:flex gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleVisualizar(cliente)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Visualizar</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditar(cliente)}
+                                    className="h-8 w-8 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Editar</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRenovarClick(cliente)}
+                                    className="h-8 w-8 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
+                                  >
+                                    <Zap className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Renovar</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleJurosClick(cliente)}
+                                    className="h-8 w-8 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
+                                  >
+                                    <Calculator className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Aplicar Juros</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleIndicacaoClick(cliente)}
+                                    className="h-8 w-8 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                                  >
+                                    <Gift className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Registrar Indicação</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleCancelarCliente(cliente)}
+                                    className={`h-8 w-8 ${cliente.cancelado ? "text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300" : "text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+                                  >
+                                    {cliente.cancelado ? (
+                                      <RotateCcw className="h-4 w-4" />
+                                    ) : (
+                                      <Ban className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{cliente.cancelado ? "Reativar Cliente" : "Marcar como Cancelado"}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleExcluirClick(cliente)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Excluir</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TooltipProvider>
                           
                           {/* DropdownMenu para telas médias (900px até 1450px) */}
                           <div className="hidden custom-md:flex custom-xl:hidden">
@@ -2009,28 +2093,90 @@ export default function Clientes() {
           <AlertDialogHeader>
             <AlertDialogTitle>Aplicar Juros por Atraso</AlertDialogTitle>
             <AlertDialogDescription>
-              Informe quantos dias o cliente{" "}
+              Selecione até qual data o cliente{" "}
               <strong>{clienteSelecionado?.nome}</strong> ficará inadimplente.
-              Os juros serão calculados automaticamente.
+              Os juros serão calculados automaticamente a partir da data de vencimento.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <Label htmlFor="diasInadimplente" className="mb-2 block">
-              Dias de inadimplência
-            </Label>
-            <Input
-              id="diasInadimplente"
-              type="number"
-              min="1"
-              value={diasInadimplente}
-              onChange={(e) => setDiasInadimplente(e.target.value)}
-              placeholder="Ex: 15"
-              className="w-full"
-            />
-            {diasInadimplente &&
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="dataJuros" className="mb-2 block">
+                Data de cálculo dos juros
+              </Label>
+              <Popover open={popoverJurosAberto} onOpenChange={setPopoverJurosAberto}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dataJurosDate ? (
+                      format(dataJurosDate, "PPP", { locale: ptBR })
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Selecione a data
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dataJurosDate || undefined}
+                    defaultMonth={dataJurosDate || (clienteSelecionado ? (() => {
+                      const [ano, mes, dia] = clienteSelecionado.dataVencimento.split("-").map(Number);
+                      return new Date(ano, mes - 1, dia);
+                    })() : new Date())}
+                    onSelect={(date) => {
+                      if (date) {
+                        date.setHours(0, 0, 0, 0);
+                        setDataJurosDate(date);
+                        setDataJuros(date.toISOString().split("T")[0]);
+                        setPopoverJurosAberto(false);
+                      }
+                    }}
+                    disabled={(date) => {
+                      if (!clienteSelecionado) return true;
+                      // Criar data no timezone local para evitar problemas de timezone
+                      const [ano, mes, dia] = clienteSelecionado.dataVencimento.split("-").map(Number);
+                      const dataVencimento = new Date(ano, mes - 1, dia);
+                      dataVencimento.setHours(0, 0, 0, 0);
+                      date.setHours(0, 0, 0, 0);
+                      return date < dataVencimento;
+                    }}
+                    captionLayout="dropdown"
+                    fromYear={2000}
+                    toYear={2100}
+                    locale={ptBR}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {clienteSelecionado && (
+                <p className="text-xs text-muted-foreground">
+                  Data de vencimento: {formatarData(clienteSelecionado.dataVencimento)}
+                </p>
+              )}
+            </div>
+            {dataJuros &&
               clienteSelecionado &&
               (() => {
-                const dias = parseInt(diasInadimplente);
+                const dataVencimento = new Date(clienteSelecionado.dataVencimento);
+                const dataSelecionada = new Date(dataJuros);
+                
+                // Verificar se a data é válida
+                if (dataSelecionada < dataVencimento) {
+                  return (
+                    <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-md">
+                      <p className="text-sm text-red-600 dark:text-red-400">
+                        A data selecionada não pode ser anterior à data de vencimento.
+                      </p>
+                    </div>
+                  );
+                }
+
+                const diffTime = dataSelecionada - dataVencimento;
+                const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 const valorDiario = parseFloat(
                   (clienteSelecionado.valor / 30).toFixed(4)
                 );
@@ -2041,6 +2187,12 @@ export default function Clientes() {
 
                 return (
                   <div className="mt-2 space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      Dias de inadimplência:{" "}
+                      <strong className="text-foreground">
+                        {dias} {dias === 1 ? "dia" : "dias"}
+                      </strong>
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       Valor dos juros:{" "}
                       <strong className="text-foreground">
@@ -2060,7 +2212,9 @@ export default function Clientes() {
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
-                setDiasInadimplente("");
+                setDataJuros("");
+                setDataJurosDate(null);
+                setPopoverJurosAberto(false);
                 setClienteSelecionado(null);
               }}
             >
@@ -2069,7 +2223,14 @@ export default function Clientes() {
             <AlertDialogAction
               onClick={confirmarJuros}
               className="bg-orange-600 text-white hover:bg-orange-700"
-              disabled={!diasInadimplente || parseInt(diasInadimplente) <= 0}
+              disabled={!dataJuros || (() => {
+                if (!clienteSelecionado || !dataJuros) return true;
+                const dataVencimento = new Date(clienteSelecionado.dataVencimento);
+                const dataSelecionada = new Date(dataJuros);
+                const diffTime = dataSelecionada - dataVencimento;
+                const dias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return dias <= 0;
+              })()}
             >
               Aplicar Juros
             </AlertDialogAction>
