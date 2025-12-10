@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { v4 as uuidv4 } from "uuid";
+import { addLogToFirebase } from "@/lib/firebaseSync";
 
 export const useLogStore = create(
   persist(
@@ -26,25 +27,56 @@ export const useLogStore = create(
         set({
           logs: [novoLog, ...logsValidos].slice(0, 1000), // Limitar a 1000 logs
         });
+
+        // Sincronizar com Firebase (em background, não bloqueia UI)
+        addLogToFirebase(novoLog)
+          .then(() => {
+            // Marcar log como sincronizado após sucesso
+            get().marcarComoSincronizado(novoLog.id);
+          })
+          .catch((error) => {
+            console.error("Erro ao sincronizar log com Firebase:", error);
+          });
+
         return novoLog;
       },
 
       // Marcar log como sincronizado
       marcarComoSincronizado: (logId) => {
-        set((state) => ({
-          logs: state.logs.map((log) =>
-            log.id === logId ? { ...log, sincronizado: true } : log
-          ),
-        }));
+        const log = get().logs.find((l) => l.id === logId);
+        if (log) {
+          const logAtualizado = { ...log, sincronizado: true };
+          set((state) => ({
+            logs: state.logs.map((l) =>
+              l.id === logId ? logAtualizado : l
+            ),
+          }));
+          // Atualizar no Firebase também
+          import("@/lib/firebaseSync").then(({ updateLogInFirebase }) => {
+            updateLogInFirebase(logAtualizado).catch((error) => {
+              console.error("Erro ao atualizar log no Firebase:", error);
+            });
+          });
+        }
       },
 
       // Marcar log de exclusão como recuperado
       marcarComoRecuperado: (logId) => {
-        set((state) => ({
-          logs: state.logs.map((log) =>
-            log.id === logId ? { ...log, recuperado: true } : log
-          ),
-        }));
+        const log = get().logs.find((l) => l.id === logId);
+        if (log) {
+          const logAtualizado = { ...log, recuperado: true };
+          set((state) => ({
+            logs: state.logs.map((l) =>
+              l.id === logId ? logAtualizado : l
+            ),
+          }));
+          // Atualizar no Firebase também
+          import("@/lib/firebaseSync").then(({ updateLogInFirebase }) => {
+            updateLogInFirebase(logAtualizado).catch((error) => {
+              console.error("Erro ao atualizar log no Firebase:", error);
+            });
+          });
+        }
       },
 
       // Recuperar cliente excluído

@@ -13,11 +13,13 @@ import {
 import { db, isFirebaseConfigured } from "./firebase";
 import { useClienteStore } from "@/stores/clienteStore";
 import { useServidorStore } from "@/stores/servidorStore";
+import { useLogStore } from "@/stores/logStore";
 import { calcularStatus, calcularDiasRestantes } from "@/lib/clienteUtils";
 
 // IDs das coleções no Firestore
 const CLIENTES_COLLECTION = "clientes";
 const SERVIDORES_COLLECTION = "servidores";
+const LOGS_COLLECTION = "logs";
 const USER_ID = "default-user"; // Você pode mudar isso para usar autenticação do Firebase
 
 // Flag para evitar loops de sincronização
@@ -380,6 +382,173 @@ export const deleteServidorFromFirebase = async (servidorId) => {
 };
 
 /**
+ * Sincroniza todos os logs do LocalStorage para o Firestore
+ */
+export const syncLogsToFirebase = async () => {
+  if (!isFirebaseConfigured() || !db) {
+    console.warn("Firebase não configurado. Pulando sincronização de logs.");
+    return;
+  }
+
+  if (isSyncing || quotaExceeded) return;
+
+  try {
+    isSyncing = true;
+    const logs = useLogStore.getState().logs;
+    const logsNaoSincronizados = logs.filter((log) => !log.sincronizado);
+
+    // Sincronizar apenas logs não sincronizados
+    const promises = logsNaoSincronizados.map(async (log) => {
+      const logRef = doc(db, LOGS_COLLECTION, `${USER_ID}_${log.id}`);
+      await setDoc(
+        logRef,
+        {
+          ...log,
+          userId: USER_ID,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+    await Promise.all(promises);
+    console.log("Logs sincronizados com Firebase");
+  } catch (error) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+      quotaExceeded = true;
+      console.warn("Quota do Firebase excedida. Logs salvos apenas localmente.");
+    } else {
+      console.error("Erro ao sincronizar logs:", error);
+    }
+  } finally {
+    isSyncing = false;
+  }
+};
+
+/**
+ * Busca todos os logs do Firestore e atualiza o LocalStorage
+ */
+export const syncLogsFromFirebase = async () => {
+  if (!isFirebaseConfigured() || !db) {
+    console.warn("Firebase não configurado. Pulando sincronização de logs.");
+    return [];
+  }
+
+  if (isSyncing || quotaExceeded) return [];
+
+  try {
+    isSyncing = true;
+    const q = query(
+      collection(db, LOGS_COLLECTION),
+      where("userId", "==", USER_ID)
+    );
+    const querySnapshot = await getDocs(q);
+
+    const logs = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const { userId, updatedAt, ...log } = data;
+      logs.push(log);
+    });
+
+    // Mesclar logs do Firebase com logs locais
+    const logsLocais = useLogStore.getState().logs;
+    const logsMap = new Map();
+    
+    // Adicionar logs locais primeiro
+    logsLocais.forEach((log) => {
+      logsMap.set(log.id, log);
+    });
+    
+    // Adicionar/atualizar com logs do Firebase (Firebase tem prioridade se mais recente)
+    logs.forEach((log) => {
+      const logLocal = logsMap.get(log.id);
+      if (!logLocal || new Date(log.timestamp) > new Date(logLocal.timestamp)) {
+        logsMap.set(log.id, { ...log, sincronizado: true });
+      }
+    });
+
+    // Converter map para array e ordenar por timestamp (mais recente primeiro)
+    const logsMesclados = Array.from(logsMap.values()).sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    // Limitar a 1000 logs e filtrar expirados
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 15);
+    const logsValidos = logsMesclados
+      .filter((log) => new Date(log.timestamp) > dataLimite)
+      .slice(0, 1000);
+
+    // Atualizar store
+    useLogStore.setState({ logs: logsValidos });
+
+    console.log("Logs carregados do Firebase");
+    return logsValidos;
+  } catch (error) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+      quotaExceeded = true;
+      console.warn("Quota do Firebase excedida. Usando logs do LocalStorage.");
+      return useLogStore.getState().logs;
+    }
+    console.error("Erro ao carregar logs do Firebase:", error);
+    return useLogStore.getState().logs;
+  } finally {
+    isSyncing = false;
+  }
+};
+
+/**
+ * Adiciona um log no Firestore
+ */
+export const addLogToFirebase = async (log) => {
+  if (!isFirebaseConfigured() || !db || quotaExceeded) return;
+
+  try {
+    const logRef = doc(db, LOGS_COLLECTION, `${USER_ID}_${log.id}`);
+    await setDoc(logRef, {
+      ...log,
+      userId: USER_ID,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+      quotaExceeded = true;
+      console.warn("Quota do Firebase excedida. Log salvo apenas localmente.");
+    } else {
+      console.error("Erro ao adicionar log no Firebase:", error);
+    }
+  }
+};
+
+/**
+ * Atualiza um log no Firestore
+ */
+export const updateLogInFirebase = async (log) => {
+  if (!isFirebaseConfigured() || !db || quotaExceeded) return;
+
+  try {
+    const logRef = doc(db, LOGS_COLLECTION, `${USER_ID}_${log.id}`);
+    await setDoc(
+      logRef,
+      {
+        ...log,
+        userId: USER_ID,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+      quotaExceeded = true;
+      console.warn("Quota do Firebase excedida. Log atualizado apenas localmente.");
+    } else {
+      console.error("Erro ao atualizar log no Firebase:", error);
+    }
+  }
+};
+
+/**
  * Configura listeners em tempo real para sincronização automática
  */
 export const setupRealtimeSync = (onSyncStatusChange) => {
@@ -491,10 +660,59 @@ export const setupRealtimeSync = (onSyncStatusChange) => {
     }
   );
 
+  // Listener para logs
+  const qLogs = query(
+    collection(db, LOGS_COLLECTION),
+    where("userId", "==", USER_ID)
+  );
+  const unsubscribeLogs = onSnapshot(
+    qLogs,
+    async (snapshot) => {
+      if (isSyncing) return;
+
+      if (isInitialLoad) {
+        return;
+      }
+
+      if (
+        snapshot.metadata.hasPendingWrites === false &&
+        snapshot.docChanges().length > 0
+      ) {
+        try {
+          await syncLogsFromFirebase();
+          if (quotaExceeded) {
+            onSyncStatusChange?.("offline");
+            return;
+          }
+          onSyncStatusChange?.("synced");
+        } catch (error) {
+          if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+            quotaExceeded = true;
+            onSyncStatusChange?.("offline");
+          } else {
+            console.error("Erro ao sincronizar logs:", error);
+            onSyncStatusChange?.("error");
+          }
+        }
+      }
+    },
+    (error) => {
+      if (error.code === 'resource-exhausted' || error.message?.includes('Quota exceeded')) {
+        quotaExceeded = true;
+        console.warn("Quota do Firebase excedida. Sistema funcionará apenas com LocalStorage.");
+        onSyncStatusChange?.("offline");
+      } else {
+        console.error("Erro no listener de logs:", error);
+        onSyncStatusChange?.("error");
+      }
+    }
+  );
+
   // Retornar função para desinscrever
   return () => {
     unsubscribeClientes();
     unsubscribeServidores();
+    unsubscribeLogs();
   };
 };
 
@@ -526,6 +744,7 @@ export const initializeSync = async (onSyncStatusChange) => {
     await Promise.all([
       syncClientesToFirebase(),
       syncServidoresToFirebase(),
+      syncLogsToFirebase(),
     ]).catch(() => {
       // Erro já foi tratado nas funções individuais
     });
@@ -542,6 +761,7 @@ export const initializeSync = async (onSyncStatusChange) => {
     await Promise.all([
       syncClientesFromFirebase(),
       syncServidoresFromFirebase(),
+      syncLogsFromFirebase(),
     ]);
 
     // Se a quota foi excedida durante a leitura, parar aqui
